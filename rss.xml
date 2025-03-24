@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+<channel>
+    <title>WeChat RSS Feed</title>
+    <link>https://michael180831.github.io/wechat-rss-feed/</link>
+    <description>This is an example RSS feed for WeChat updates.</description>
+    <item>
+        <title>Example Article</title>
+        <link>https://michael180831.github.io/wechat-rss-feed/example-article</link>
+        <description>This is an example article.</description>
+        <pubDate>Mon, 24 Mar 2025 19:00:00 GMT</pubDate>
+    </item>
+</channel>
+</rss>
