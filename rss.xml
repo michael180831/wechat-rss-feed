@@ -3,12 +3,13 @@
 <channel>
     <title>WeChat RSS Feed</title>
     <link>https://michael180831.github.io/wechat-rss-feed/</link>
-    <description>This is an example RSS feed for WeChat updates.</description>
+    <description>WeChat RSS Feed Updates</description>
+    <lastBuildDate>Mon, 24 Mar 2025 19:10:37 GMT</lastBuildDate>
     <item>
-        <title>Example Article</title>
-        <link>https://michael180831.github.io/wechat-rss-feed/example-article</link>
-        <description>This is an example article.</description>
-        <pubDate>Mon, 24 Mar 2025 19:00:00 GMT</pubDate>
+        <title>Initial RSS Feed Setup</title>
+        <link>https://michael180831.github.io/wechat-rss-feed/</link>
+        <description>Initial RSS feed setup for WeChat updates.</description>
+        <pubDate>Mon, 24 Mar 2025 19:10:37 GMT</pubDate>
     </item>
 </channel>
 </rss>
