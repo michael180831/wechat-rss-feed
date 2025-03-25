@@ -23,14 +23,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install feedparser
+          pip install feedparser requests beautifulsoup4
 
+      - name: Process biz file
+        run: |
+          python scripts/process_biz.py
+        
       - name: Check RSS updates
         id: check
         run: |
           python scripts/check_updates.py
-        continue-on-error: true    # 添加错误继续选项
-      
+        continue-on-error: true
+
       - name: Initialize last_update.json if not exists
         run: |
           if [ ! -f last_update.json ]; then
