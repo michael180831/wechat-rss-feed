@@ -1,16 +1,15 @@
 import feedparser
 import json
 import os
+import requests
 from datetime import datetime, timezone
 from time import mktime
 
-# 新添加的函数 - 在文件开头的 import 语句后添加
 def get_valid_biz_list():
     """获取所有可能的有效 biz 组合"""
     try:
         with open('processed_biz.json', 'r', encoding='utf-8') as f:
             biz_data = json.load(f)
-        # 展平所有可能的 biz 变体
         all_variants = set()
         for variants in biz_data.values():
             all_variants.update(variants)
@@ -29,7 +28,6 @@ def load_last_update():
             data = json.load(f)
             return datetime.fromisoformat(data['last_update'])
     except FileNotFoundError:
-        # 如果文件不存在，创建一个初始文件
         initial_time = datetime.now(timezone.utc)
         save_last_update(initial_time)
         return initial_time
@@ -39,12 +37,54 @@ def save_last_update(update_time):
     with open('last_update.json', 'w') as f:
         json.dump({'last_update': update_time.isoformat()}, f)
 
+def create_update_issue(latest_entry):
+    """创建更新通知的 Issue"""
+    try:
+        url = "https://api.github.com/repos/michael180831/wechat-rss-feed/issues"
+        
+        title = f"RSS更新: {latest_entry.get('title', '新文章')}"
+        content = latest_entry.get('description', '')
+        
+        body = f"""
+# 新文章更新
+
+## 文章信息
+- 标题: {latest_entry.get('title', '')}
+- 链接: {latest_entry.get('link', '')}
+- 发布时间: {latest_entry.get('published', '')}
+- 作者: {latest_entry.get('author', '')}
+
+## 原文内容
+{content}
+"""
+        
+        headers = {
+            "Authorization": f"token {os.environ.get('GITHUB_TOKEN')}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        data = {
+            "title": title,
+            "body": body,
+            "labels": ["rss-update", "pending-summary"]  # 添加标签以标识需要处理
+        }
+        
+        response = requests.post(url, json=data, headers=headers)
+        if response.status_code == 201:
+            print("Successfully created issue for update")
+            return True
+        else:
+            print(f"Failed to create issue. Status code: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"Error creating issue: {str(e)}")
+        return False
+
 def check_updates():
     """检查RSS是否有更新"""
     feed_url = "https://michael180831.github.io/wechat-rss-feed/rss.xml"
     
     try:
-        # 获取有效的 biz 列表 - 新添加的代码
         valid_biz_list = get_valid_biz_list()
         print(f"Loaded {len(valid_biz_list)} valid biz variants")
         
@@ -57,39 +97,18 @@ def check_updates():
         last_update = load_last_update()
         latest_entry = feed.entries[0]
         
-        # 打印调试信息
-        print(f"Feed URL: {feed_url}")
-        print(f"Feed entries count: {len(feed.entries)}")
-        print(f"Latest entry title: {latest_entry.get('title', 'No title')}")
-        
-        # 获取最新文章的发布时间
         if hasattr(latest_entry, 'published_parsed'):
             latest_time = datetime.fromtimestamp(
                 mktime(latest_entry.published_parsed),
                 tz=timezone.utc
             )
             
-            print(f"Last update time: {last_update}")
-            print(f"Latest entry time: {latest_time}")
-            
-            # 检查文章内容中的 biz 参数 - 新添加的代码
-            description = latest_entry.get('description', '')
-            if 'biz=' in description:
-                for biz in valid_biz_list:
-                    if f'biz={biz}' in description:
-                        print(f"Found valid biz: {biz}")
-                        if latest_time > last_update:
-                            save_last_update(latest_time)
-                            return True
-            else:
-                print("No biz parameter found in the entry")
-            
             if latest_time > last_update:
-                save_last_update(latest_time)
-                return True
-        else:
-            print("No publication time found in the latest entry")
-            
+                issue_created = create_update_issue(latest_entry)
+                if issue_created:
+                    save_last_update(latest_time)
+                return issue_created
+                
         return False
         
     except Exception as e:

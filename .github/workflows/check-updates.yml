@@ -9,7 +9,8 @@ jobs:
   check-updates:
     runs-on: ubuntu-latest
     permissions:
-      contents: write    # 添加写入权限
+      issues: write     # 添加创建 issue 的权限
+      contents: write   # 保留写入权限
     
     steps:
       - name: Checkout repository
@@ -31,12 +32,8 @@ jobs:
         
       - name: Check RSS updates
         id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python scripts/check_updates.py
         continue-on-error: true
-
-      - name: Initialize last_update.json if not exists
-        run: |
-          if [ ! -f last_update.json ]; then
-            echo '{"last_update": "2024-01-01T00:00:00+00:00"}' > last_update.json
-          fi
