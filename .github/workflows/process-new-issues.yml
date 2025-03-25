@@ -2,7 +2,7 @@ name: Process New Issues
 
 on:
   issues:
-    types: [opened]
+    types: [opened, labeled]  # 添加 labeled 事件触发
 
 jobs:
   process-issue:

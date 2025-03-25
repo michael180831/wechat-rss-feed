@@ -12,7 +12,7 @@ class AIService:
     def __init__(self):
         # 这里添加你的 AI 服务凭证
         self.api_key = os.environ.get('AI_API_KEY')
-        self.api_url = "YOUR_AI_SERVICE_ENDPOINT"  # 替换为实际的 API 端点
+        self.api_url = "https://api.deepseek.com/v1/chat/completions"  # 替换为实际的 API 端点
 
     def is_job_related(self, text: str) -> bool:
         """判断文章是否与招聘/求职相关"""
