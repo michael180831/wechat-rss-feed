@@ -25,6 +25,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
+      - name: Debug Environment
+        run: |
+          echo "Checking required environment variables..."
+          echo "GITHUB_TOKEN exists: ${{ secrets.GITHUB_TOKEN != '' }}"
+          echo "AI_API_KEY exists: ${{ secrets.AI_API_KEY != '' }}"
+          echo "EMAIL_SENDER exists: ${{ secrets.EMAIL_SENDER != '' }}"
+          echo "EMAIL_PASSWORD exists: ${{ secrets.EMAIL_PASSWORD != '' }}"
+          echo "EMAIL_RECIPIENT exists: ${{ secrets.EMAIL_RECIPIENT != '' }}"
+          echo "Current working directory: $PWD"
+          echo "Files in current directory:"
+          ls -la
+          echo "Files in scripts directory:"
+          ls -la scripts/
+
       - name: Process Issue
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -33,4 +47,4 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: |
-          python scripts/process_issue.py
+          python -u scripts/process_issue.py  # 添加 -u 参数以确保输出不被缓存
