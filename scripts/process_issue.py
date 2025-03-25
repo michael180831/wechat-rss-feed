@@ -26,8 +26,6 @@ class AIService:
             {text}
             """
             
-            # TODO: 实现实际的 AI 调用
-            # 这里需要根据实际使用的 AI 服务来实现
             response = self._call_ai_api(prompt)
             return 'true' in response.lower()
             
@@ -55,8 +53,6 @@ class AIService:
             {text}
             """
             
-            # TODO: 实现实际的 AI 调用
-            # 这里需要根据实际使用的 AI 服务来实现
             response = self._call_ai_api(prompt)
             
             # 解析响应为字典格式
@@ -68,10 +64,39 @@ class AIService:
             return {}
 
     def _call_ai_api(self, prompt: str) -> str:
-        """调用 AI API"""
-        # TODO: 实现实际的 AI API 调用
-        # 这里需要根据实际使用的 AI 服务来实现
-        pass
+        """调用 Deepseek API"""
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": "deepseek-chat",  # 或其他适合的模型
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.7
+            }
+            
+            response = requests.post(
+                self.api_url,
+                headers=headers,
+                json=data
+            )
+            
+            if response.status_code == 200:
+                return response.json()['choices'][0]['message']['content']
+            else:
+                print(f"API call failed: {response.status_code}")
+                return ""
+                
+        except Exception as e:
+            print(f"Error calling AI API: {str(e)}")
+            return ""
 
     def _parse_summary(self, response: str) -> Dict[str, str]:
         """解析 AI 响应为字典格式"""
@@ -123,3 +148,144 @@ class NotificationService:
         except Exception as e:
             print(f"Error sending email: {str(e)}")
             return False
+
+def extract_content_and_link(body: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """从 Issue 正文中提取需要总结的内容、链接和 biz 参数"""
+    try:
+        content_start = body.find("## 原文内容")
+        if content_start == -1:
+            return None, None, None
+        
+        content = body[content_start + len("## 原文内容"):].strip()
+        
+        # 提取链接
+        link_match = re.search(r"链接: (.*?)\n", body)
+        link = link_match.group(1) if link_match else None
+        
+        # 提取 biz 参数
+        biz = None
+        if link:
+            biz_match = re.search(r"biz=([^&]+)", link)
+            biz = biz_match.group(1) if biz_match else None
+        
+        return content, link, biz
+    except Exception as e:
+        print(f"Error extracting content: {str(e)}")
+        return None, None, None
+
+def process_issue():
+    """处理新的 Issue"""
+    try:
+        event_path = os.environ.get('GITHUB_EVENT_PATH')
+        if not event_path:
+            raise ValueError("No event data found")
+            
+        with open(event_path, 'r') as f:
+            event_data = json.load(f)
+            
+        issue = event_data['issue']
+        
+        # 提取内容和链接
+        content, article_url, biz = extract_content_and_link(issue['body'])
+        if not content:
+            print("No content found to summarize")
+            return False
+            
+        # 创建服务实例
+        ai_service = AIService()
+        notification_service = NotificationService()
+        
+        # 判断是否与招聘相关
+        if not ai_service.is_job_related(content):
+            print("Article is not job-related")
+            update_issue_with_status(
+                issue['number'],
+                issue['body'],
+                "文章与招聘/求职无关"
+            )
+            return True
+        
+        # 生成总结
+        summary = ai_service.summarize(content, biz)
+        
+        # 发送通知
+        notification_service.send_email(summary, article_url)
+        
+        # 更新 Issue
+        success = update_issue_with_summary(
+            issue['number'],
+            issue['body'],
+            summary
+        )
+        
+        return success
+        
+    except Exception as e:
+        print(f"Error processing issue: {str(e)}")
+        return False
+
+def update_issue_with_status(issue_number: int, original_body: str, status: str):
+    """更新 Issue 状态"""
+    try:
+        url = f"https://api.github.com/repos/michael180831/wechat-rss-feed/issues/{issue_number}"
+        
+        new_body = f"""# 处理状态
+{status}
+
+---
+{original_body}"""
+        
+        headers = {
+            "Authorization": f"token {os.environ.get('GITHUB_TOKEN')}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        data = {
+            "body": new_body,
+            "labels": ["rss-update", "processed", "not-job-related"]
+        }
+        
+        response = requests.patch(url, json=data, headers=headers)
+        return response.status_code == 200
+        
+    except Exception as e:
+        print(f"Error updating issue: {str(e)}")
+        return False
+
+def update_issue_with_summary(issue_number: int, original_body: str, summary: Dict[str, str]):
+    """更新 Issue，添加 AI 总结"""
+    try:
+        url = f"https://api.github.com/repos/michael180831/wechat-rss-feed/issues/{issue_number}"
+        
+        summary_text = "\n".join([f"{k}：{v}" for k, v in summary.items()])
+        
+        new_body = f"""# AI 总结
+{summary_text}
+
+---
+{original_body}"""
+        
+        headers = {
+            "Authorization": f"token {os.environ.get('GITHUB_TOKEN')}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        data = {
+            "body": new_body,
+            "labels": ["rss-update", "processed", "job-related"]
+        }
+        
+        response = requests.patch(url, json=data, headers=headers)
+        return response.status_code == 200
+        
+    except Exception as e:
+        print(f"Error updating issue: {str(e)}")
+        return False
+
+if __name__ == "__main__":
+    success = process_issue()
+    # 使用新的GitHub Actions输出语法
+    with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+        print(f"success={str(success).lower()}", file=fh)
+    
+    print(f"Issue processing completed. Success: {success}")
