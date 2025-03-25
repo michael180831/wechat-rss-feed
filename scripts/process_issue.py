@@ -10,26 +10,27 @@ from email.mime.multipart import MIMEMultipart
 class AIService:
     """AI服务接口"""
     def __init__(self):
-        self.api_key = os.environ.get('AI_API_KEY')
-        print(f"AI API Key exists: {bool(self.api_key)}")  # 调试信息
-        self.api_url = "https://api.deepseek.com/v1/chat/completions"
+        self.api_key = os.environ.get('SILKLAB_API_KEY')
+        print(f"Silklab API Key exists: {bool(self.api_key)}")
+        self.api_url = "https://api.silklab.ai/v1/chat/completions"
 
-    def _call_ai_api(self, prompt: str) -> str:
-        """调用AI API"""
+    def _call_silklab_api(self, prompt: str) -> str:
+        """调用硅基流动API"""
         try:
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json"
             }
             data = {
-                "model": "deepseek-chat",
-                "messages": [{"role": "user", "content": prompt}]
+                "model": "silicon-wiz-7b",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7
             }
             response = requests.post(self.api_url, headers=headers, json=data)
             response.raise_for_status()
             return response.json()['choices'][0]['message']['content']
         except Exception as e:
-            print(f"Error calling AI API: {str(e)}")
+            print(f"Error calling Silklab API: {str(e)}")
             return ""
 
     def is_job_related(self, text: str) -> bool:
