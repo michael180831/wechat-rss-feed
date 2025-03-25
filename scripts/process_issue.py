@@ -94,8 +94,8 @@ class NotificationService:
         self.email_sender = os.environ.get('EMAIL_SENDER')
         self.email_password = os.environ.get('EMAIL_PASSWORD')
         self.email_recipient = os.environ.get('EMAIL_RECIPIENT')
-        self.smtp_server = "smtp.gmail.com"  # 根据实际邮箱服务器修改
-        self.smtp_port = 587
+        self.smtp_server = "smtp.qq.com"  # QQ 邮箱 SMTP 服务器
+        self.smtp_port = 587  # QQ 邮箱 SMTP 端口
 
     def send_email(self, summary: Dict[str, str], article_url: str):
         """发送邮件通知"""
@@ -110,7 +110,7 @@ class NotificationService:
                 body += f"{key}：{value}\n"
             body += f"\n原文链接：{article_url}"
 
-            msg.attach(MIMEText(body, 'plain'))
+            msg.attach(MIMEText(body, 'plain', 'utf-8'))  # 添加 utf-8 编码支持
 
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
                 server.starttls()
