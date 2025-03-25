@@ -8,6 +8,9 @@ on:
 jobs:
   check-updates:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write    # 添加写入权限
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -24,7 +27,12 @@ jobs:
 
       - name: Check RSS updates
         id: check
-        run: python scripts/check_updates.py
-
-      - name: Print update status
-        run: echo "Has updates - ${{ steps.check.outputs.has_updates }}"
+        run: |
+          python scripts/check_updates.py
+        continue-on-error: true    # 添加错误继续选项
+      
+      - name: Initialize last_update.json if not exists
+        run: |
+          if [ ! -f last_update.json ]; then
+            echo '{"last_update": "2024-01-01T00:00:00+00:00"}' > last_update.json
+          fi
