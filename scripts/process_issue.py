@@ -6,6 +6,8 @@ from typing import Optional, Dict
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from datetime import datetime
+import traceback
 
 class AIService:
     """AI服务接口"""
@@ -400,7 +402,9 @@ def update_issue_with_summary(issue_number: int, original_body: str, summary: Di
 def process_issue():
     """处理新的 Issue"""
     try:
-        print("Starting process_issue function")
+        print("\n=== Process Start ===")
+        print(f"Processing time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
         event_path = os.environ.get('GITHUB_EVENT_PATH')
         print(f"Event path: {event_path}")
         
@@ -409,35 +413,36 @@ def process_issue():
             
         with open(event_path, 'r') as f:
             event_data = json.load(f)
-        print(f"Event data loaded")
+        print(f"Event data loaded successfully")
             
         issue = event_data['issue']
-        print(f"Processing issue #{issue['number']}")
-        print(f"Issue labels: {[label['name'] for label in issue.get('labels', [])]}")
+        print(f"\n=== Issue Information ===")
+        print(f"Issue number: #{issue['number']}")
+        print(f"Labels: {[label['name'] for label in issue.get('labels', [])]}")
         
         # 提取内容和链接
+        print("\n=== Content Extraction ===")
         content, article_url, biz = extract_content_and_link(issue['body'])
-        print(f"Extracted content length: {len(content) if content else 0}")
-        print(f"Extracted URL: {article_url}")
-        print(f"Extracted biz: {biz}")
+        print(f"Content length: {len(content) if content else 0}")
+        print(f"URL: {article_url}")
+        print(f"Biz: {biz}")
         
         if not content:
-            print("No content found to summarize")
+            print("Error: No content found to process")
             return False
             
         # 创建服务实例
-        print("Initializing services...")
+        print("\n=== Service Initialization ===")
         ai_service = AIService()
         notification_service = NotificationService()
         
         # 判断是否与招聘相关
-        print("Checking if content is job related...")
+        print("\n=== Job Content Detection ===")
         is_job = ai_service.is_job_related(content)
         print(f"Is job related: {is_job}")
         
         if not is_job:
-            print("Article is not job-related")
-            print("Updating issue with not-job-related status...")
+            print("\n=== Not Job Related - Updating Issue ===")
             update_issue_with_status(
                 issue['number'],
                 issue['body'],
@@ -446,31 +451,55 @@ def process_issue():
             return True
         
         # 生成总结
-        print("Generating summary...")
+        print("\n=== Generating Summary ===")
         summary = ai_service.summarize(content, biz)
-        print(f"Generated summary: {json.dumps(summary, indent=2, ensure_ascii=False)}")
+        print("Summary content:")
+        print(json.dumps(summary, indent=2, ensure_ascii=False))
         
-        # 发送通知
-        print("Sending email notification...")
+        # 发送通知邮件
+        print("\n=== Sending Email Notification ===")
+        print("Email configuration:")
+        print(f"Sender configured: {bool(os.environ.get('EMAIL_SENDER'))}")
+        print(f"Password configured: {bool(os.environ.get('EMAIL_PASSWORD'))}")
+        print(f"Recipient configured: {bool(os.environ.get('EMAIL_RECIPIENT'))}")
+        
         notification_success = notification_service.send_email(summary, article_url)
-        print(f"Email notification success: {notification_success}")
+        print(f"Email sending result: {'Success' if notification_success else 'Failed'}")
         
-        # 更新 Issue
-        print("Updating issue with summary...")
+        if not notification_success:
+            print("WARNING: Failed to send email notification!")
+        
+        # 添加标签和更新 Issue
+        print("\n=== Updating Issue ===")
+        print(f"Adding 'jobs' label to issue #{issue['number']}")
+        add_job_label(issue['number'])
+        
         success = update_issue_with_summary(
             issue['number'],
             issue['body'],
             summary
         )
-        print(f"Issue update success: {success}")
+        print(f"Issue update result: {'Success' if success else 'Failed'}")
+        
+        # 处理结果总结
+        print("\n=== Process Summary ===")
+        print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Issue: #{issue['number']}")
+        print(f"Content detection: Success")
+        print(f"Summary generation: Success")
+        print(f"Email notification: {'Success' if notification_success else 'Failed'}")
+        print(f"Issue update: {'Success' if success else 'Failed'}")
         
         return success
         
     except Exception as e:
-        print(f"Error processing issue: {str(e)}")
+        print("\n=== Error Report ===")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
         import traceback
-        print(f"Full traceback:\n{traceback.format_exc()}")
+        print(f"Stack trace:\n{traceback.format_exc()}")
         return False
+
 
 if __name__ == "__main__":
     success = process_issue()
