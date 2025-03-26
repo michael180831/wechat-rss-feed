@@ -96,10 +96,14 @@ class AIService:
         """判断文章是否与招聘/求职相关"""
         try:
             print(f"Checking if text is job related. Text length: {len(text)}")
+            print(f"Text preview: {text[:200]}...")  # 打印文本预览
             
             # 第一层：关键词匹配
             print("Performing basic keyword check...")
-            if not self._check_basic_keywords(text):
+            basic_keywords_result = self._check_basic_keywords(text)
+            print(f"Basic keywords result: {basic_keywords_result}")
+            
+            if not basic_keywords_result:
                 print("Failed basic keyword check")
                 return False
             
