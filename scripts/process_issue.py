@@ -91,36 +91,36 @@ class AIService:
             return {"error": str(e)}
 
     def is_job_related(self, text: str) -> bool:
-    """判断文章是否与招聘/求职相关"""
+        """判断文章是否与招聘/求职相关"""
         try:
             print(f"Checking if text is job related. Text length: {len(text)}")
-        
+            
             # 第一层：关键词匹配
             print("Performing basic keyword check...")
             if not self._check_basic_keywords(text):
                 print("Failed basic keyword check")
                 return False
-        
+            
             # 第二层：AI深度分析
             print("Performing AI deep analysis...")
             is_job = self._ai_deep_analysis(text)
             print(f"AI deep analysis result: {is_job}")
-        
+            
             return is_job
-        
-    except Exception as e:
-        print(f"Error checking job relevance: {str(e)}")
-        return False
-        
+            
+        except Exception as e:
+            print(f"Error checking job relevance: {str(e)}")
+            return False
+    
     def _check_basic_keywords(self, text: str) -> bool:
         """基础关键词匹配"""
         # 招聘核心词集合
         core_keywords = {
             '招聘', '诚聘', '急聘', '招人', '招工', '急招', '招贤', '招兵买马', 
-        '纳新', '扩招', '高薪聘请', '高薪诚聘', '内部推荐', '人才引进', 
-        '人才招募', '招骋', '急佂', '招蓦', '人材'
+            '纳新', '扩招', '高薪聘请', '高薪诚聘', '内部推荐', '人才引进', 
+            '人才招募', '招骋', '急佂', '招蓦', '人材'
         }
-    
+        
         # 具体岗位词集合
         position_keywords = {
             '招学徒', '招客服', '招文员', '招宝妈', '招保洁', '招护工', '招阿姨',
@@ -129,14 +129,14 @@ class AIService:
             '招跟班', '招洗碗工', '招操作工', '招日结工', '招顶班', '招替班', 
             '招替工', '招寒假工', '招暑假工', '招临时', '招钟点'
         }
-    
+        
         # 工作性质词集合
         job_type_keywords = {
             '全职', '兼职', '实习', '临时工', '长期工', '短期工', '小时工',
             '日结工', '假期工', '学生工', '寒假工', '暑假工', '钟点工',
             '替班', '顶班', '临时'
-            }
-    
+        }
+        
         # 待遇相关词集合
         benefit_keywords = {
             '日结', '月结', '现结', '压三天', '包吃住', '包住宿', '报销路费',
@@ -144,14 +144,14 @@ class AIService:
             '房补', '餐补', '车补', '油补', '全勤奖', '年底双薪',
             '月入过万', '轻松过万', '上班自由', '时间自由', '不打卡', '可预支',
             '学费返还', '带薪培训', '工资透明', '现金结算'
-        }    
-    
+        }
+        
         # 工作模式词集合
         work_mode_keywords = {
             '做六休一', '两班倒', '长白班', '站立工作',
             '手工外发', '在家可做', '代加工', '手机兼职'
         }
-    
+        
         # 普通用语词集合（方言或口语化表达）
         colloquial_keywords = {
             '找人手', '找工人', '找师傅', '带徒弟', '找帮手', '添人手',
@@ -159,7 +159,7 @@ class AIService:
             '跑腿儿', '整人手', '缺帮手', '找干活麻溜的', '力工',
             '寻师傅一名', '找小工', '打零工', '出大力的', '干体力活'
         }
-    
+        
         # 转换为小写进行匹配
         text_lower = text.lower()
         
@@ -193,7 +193,7 @@ class AIService:
         
         print(f"Final basic check result: {is_job_post}")
         return is_job_post
-
+    
     def _ai_deep_analysis(self, text: str) -> bool:
         """AI深度分析"""
         prompt = f"""
