@@ -153,37 +153,65 @@ def process_issue(issue: Dict[str, Any]) -> bool:
         traceback.print_exc()
         return False
 
-    def summarize(self, content: str, biz: str) -> Dict[str, str]:
-        """生成文章总结"""
+    def summarize(self, content: str, biz: Optional[str] = None) -> Dict[str, Any]:
+        """总结内容，返回结构化信息"""
         try:
-            prompt = f"""
-            请分析以下招聘信息，提取关键信息并按以下格式返回JSON：
-            {{
-                "职位": "职位名称",
-                "公司": "公司名称（如果有）",
-                "工作地点": "工作地点",
-                "工资待遇": "薪资范围和福利",
-                "工作要求": "主要要求",
-                "联系方式": "联系方式"
-            }}
-
-            招聘信息：
-            {content}
-
-            微信公众号biz: {biz}
-            """
+            print("\n=== Content Summary ===")
+            print(f"Processing time (UTC): {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
             
+            cleaned_content = self.clean_content(content)
+            
+            prompt = f"""请分析以下招聘信息，并以JSON格式返回以下字段：
+    1. title: 职位名称
+    2. company: 公司名称（如果有）
+    3. salary: 薪资信息（如果有）
+    4. location: 工作地点
+    5. requirements: 职位要求（列表形式）
+    6. benefits: 福利待遇（列表形式）
+    7. contact: 联系方式
+    8. work_type: 工作类型（全职/兼职/实习等）
+    9. work_time: 工作时间（如果有）
+    
+    内容：
+    {cleaned_content}
+    
+    请确保返回格式为有效的JSON格式。如果某字段信息不存在，将其值设为null。"""
+    
+            print("Sending summary request to AI...")
             response = self._call_spark_api(prompt)
-            # 尝试解析JSON响应
+            
+            if not response:
+                print("No response from AI service")
+                return {
+                    "error": "无法获取内容总结",
+                    "biz": biz,
+                    "raw_content": cleaned_content
+                }
+                
             try:
-                return json.loads(response)
+                # 尝试解析JSON响应
+                summary = json.loads(response)
+                summary["biz"] = biz
+                summary["raw_content"] = cleaned_content
+                print("Summary generated successfully")
+                return summary
             except json.JSONDecodeError:
                 print(f"Failed to parse AI response as JSON: {response}")
-                return {"error": "无法解析响应"}
+                return {
+                    "error": "无法解析AI响应",
+                    "biz": biz,
+                    "raw_content": cleaned_content,
+                    "ai_response": response
+                }
                 
         except Exception as e:
-            print(f"Error generating summary: {str(e)}")
-            return {"error": str(e)}
+            print(f"Error in summarize: {str(e)}")
+            traceback.print_exc()
+            return {
+                "error": f"处理过程出错: {str(e)}",
+                "biz": biz,
+                "raw_content": content
+            }
 
     def is_job_related(self, text: str) -> bool:
         """判断文章是否与招聘/求职相关"""
