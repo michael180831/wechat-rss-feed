@@ -12,52 +12,46 @@ import traceback
 class AIService:
     """AI服务接口"""
     def __init__(self):
-        self.app_id = os.environ.get('SPARK_APP_ID')
-        self.api_key = os.environ.get('SPARK_API_KEY')
-        self.api_secret = os.environ.get('SPARK_API_SECRET')
-        print(f"Spark API credentials configured: {bool(self.app_id and self.api_key and self.api_secret)}")
-        self.api_url = "wss://spark-api.xf-yun.com/v1.1/chat"
+        self.api_password = os.environ.get('API_PASSWORD')
+        print(f"API Password configured: {bool(self.api_password)}")
+        self.api_url = "https://spark-api-open.xf-yun.com/v1/chat/completions"
 
     def _call_spark_api(self, prompt: str) -> str:
         """调用星火API"""
         try:
             headers = {
+                "Authorization": f"Bearer {self.api_password}",
                 "Content-Type": "application/json"
             }
+            
             data = {
-                "header": {
-                    "app_id": self.app_id,
-                    "uid": "user"  # 可以是固定值
-                },
-                "parameter": {
-                    "chat": {
-                        "domain": "lite",
-                        "temperature": 0.7,
-                        "max_tokens": 1024,
+                "model": "lite",  # 或 "sparkdesk-v3.5" 取决于您使用的模型版本
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "你是一个专业的招聘信息分析助手"
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
                     }
-                },
-                "payload": {
-                    "message": {
-                        "text": [
-                            {"role": "user", "content": prompt}
-                        ]
-                    }
-                }
+                ]
             }
+            
             response = requests.post(self.api_url, headers=headers, json=data)
             response.raise_for_status()
             
-            # 解析响应
             result = response.json()
-            if result['header']['code'] == 0:
-                content = result['payload']['choices']['text'][0]['content']
+            if 'choices' in result and len(result['choices']) > 0:
+                content = result['choices'][0]['message']['content']
                 return content
             else:
-                print(f"API error: {result['header']['message']}")
+                print(f"Unexpected API response format: {result}")
                 return ""
                 
         except Exception as e:
             print(f"Error calling Spark API: {str(e)}")
+            traceback.print_exc()
             return ""
 
     def summarize(self, content: str, biz: str) -> Dict[str, str]:
