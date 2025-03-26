@@ -29,7 +29,9 @@ jobs:
         run: |
           echo "Checking required environment variables..."
           echo "GITHUB_TOKEN exists: ${{ secrets.GITHUB_TOKEN != '' }}"
-          echo "AI_API_KEY exists: ${{ secrets.AI_API_KEY != '' }}"
+          echo "SPARK_APP_ID exists: ${{ secrets.SPARK_APP_ID != '' }}"
+          echo "SPARK_API_KEY exists: ${{ secrets.SPARK_API_KEY != '' }}"
+          echo "SPARK_API_SECRET exists: ${{ secrets.SPARK_API_SECRET != '' }}"
           echo "EMAIL_SENDER exists: ${{ secrets.EMAIL_SENDER != '' }}"
           echo "EMAIL_PASSWORD exists: ${{ secrets.EMAIL_PASSWORD != '' }}"
           echo "EMAIL_RECIPIENT exists: ${{ secrets.EMAIL_RECIPIENT != '' }}"
@@ -42,9 +44,11 @@ jobs:
       - name: Process Issue
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          SPARK_APP_ID: ${{ secrets.SPARK_APP_ID }}
+          SPARK_API_KEY: ${{ secrets.SPARK_API_KEY }}
+          SPARK_API_SECRET: ${{ secrets.SPARK_API_SECRET }}
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: |
-          python -u scripts/process_issue.py  # 添加 -u 参数以确保输出不被缓存
+          python -u scripts/process_issue.py
