@@ -426,6 +426,10 @@ def process_issue():
         print(f"Content length: {len(content) if content else 0}")
         print(f"URL: {article_url}")
         print(f"Biz: {biz}")
+        print("Content preview:")
+        print("-" * 50)
+        print(content[:500] if content else "No content")  # 只打印前500个字符
+        print("-" * 50)
         
         if not content:
             print("Error: No content found to process")
@@ -434,12 +438,11 @@ def process_issue():
         # 创建服务实例
         print("\n=== Service Initialization ===")
         ai_service = AIService()
-        notification_service = NotificationService()
         
         # 判断是否与招聘相关
         print("\n=== Job Content Detection ===")
         is_job = ai_service.is_job_related(content)
-        print(f"Is job related: {is_job}")
+        print(f"Job detection result: {is_job}")
         
         if not is_job:
             print("\n=== Not Job Related - Updating Issue ===")
@@ -448,32 +451,31 @@ def process_issue():
                 issue['body'],
                 "文章与招聘/求职无关"
             )
+            print("Status updated: Not job related")
             return True
+            
+        # 如果是招聘相关，继续处理
+        print("\n=== Job Related - Processing ===")
         
         # 生成总结
-        print("\n=== Generating Summary ===")
+        print("Generating summary...")
         summary = ai_service.summarize(content, biz)
         print("Summary content:")
         print(json.dumps(summary, indent=2, ensure_ascii=False))
         
+        # 添加标签
+        print("\nAdding jobs label...")
+        add_job_label(issue['number'])
+        print("Label added successfully")
+        
         # 发送通知邮件
         print("\n=== Sending Email Notification ===")
-        print("Email configuration:")
-        print(f"Sender configured: {bool(os.environ.get('EMAIL_SENDER'))}")
-        print(f"Password configured: {bool(os.environ.get('EMAIL_PASSWORD'))}")
-        print(f"Recipient configured: {bool(os.environ.get('EMAIL_RECIPIENT'))}")
-        
+        notification_service = NotificationService()
         notification_success = notification_service.send_email(summary, article_url)
         print(f"Email sending result: {'Success' if notification_success else 'Failed'}")
         
-        if not notification_success:
-            print("WARNING: Failed to send email notification!")
-        
-        # 添加标签和更新 Issue
-        print("\n=== Updating Issue ===")
-        print(f"Adding 'jobs' label to issue #{issue['number']}")
-        add_job_label(issue['number'])
-        
+        # 更新 Issue
+        print("\n=== Updating Issue with Summary ===")
         success = update_issue_with_summary(
             issue['number'],
             issue['body'],
@@ -486,6 +488,7 @@ def process_issue():
         print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Issue: #{issue['number']}")
         print(f"Content detection: Success")
+        print(f"Job related: Yes")
         print(f"Summary generation: Success")
         print(f"Email notification: {'Success' if notification_success else 'Failed'}")
         print(f"Issue update: {'Success' if success else 'Failed'}")
@@ -496,7 +499,6 @@ def process_issue():
         print("\n=== Error Report ===")
         print(f"Error type: {type(e).__name__}")
         print(f"Error message: {str(e)}")
-        import traceback
         print(f"Stack trace:\n{traceback.format_exc()}")
         return False
 
