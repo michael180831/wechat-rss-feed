@@ -16,13 +16,58 @@ class AIService:
         self.api_password = os.environ.get('API_PASSWORD')
         if not self.api_password:
             raise ValueError("API_PASSWORD environment variable is not set")
+        print(f"API Password configured: {bool(self.api_password)}")
         self.api_url = "https://spark-api-open.xf-yun.com/v1/chat/completions"
-        self.user_id = "michael180831"  # 使用您的 GitHub 登录名作为用户标识
+        self.user_id = "michael180831"
+
+    def is_job_related(self, content: str) -> bool:
+        """判断内容是否与招聘相关"""
+        try:
+            prompt = f"请判断以下内容是否是招聘信息，只需要回答是或否：\n{content}"
+            response = self._call_spark_api(prompt)
+            
+            if not response:
+                return False
+                
+            # 简单判断响应中是否包含"是"
+            return "是" in response
+            
+        except Exception as e:
+            print(f"Error in is_job_related: {str(e)}")
+            return False
 
     def _call_spark_api(self, prompt: str) -> str:
         """调用星火API"""
         try:
-            # ... 前面的代码保持不变 ...
+            print("Preparing API call...")
+            
+            headers = {
+                "Authorization": f"Bearer {self.api_password}",
+                "Content-Type": "application/json"
+            }
+            
+            print("Headers configured (auth length):", len(str(self.api_password)))
+            
+            data = {
+                "model": "lite",  # Spark Lite 版本
+                "user": self.user_id,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "你是一个专业的招聘信息分析助手"
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            }
+            
+            print(f"Making request to {self.api_url}")
+            safe_headers = headers.copy()
+            safe_headers['Authorization'] = '***'
+            print(f"Request headers: {safe_headers}")
+            print(f"Request data: {data}")
             
             response = requests.post(self.api_url, headers=headers, json=data)
             
@@ -35,12 +80,7 @@ class AIService:
             result = response.json()
             if 'choices' in result and len(result['choices']) > 0:
                 content = result['choices'][0]['message']['content']
-                # 尝试解析返回的内容为 JSON
-                try:
-                    json_content = json.loads(content)
-                    return json.dumps(json_content, ensure_ascii=False)
-                except json.JSONDecodeError:
-                    return content
+                return content
             else:
                 print(f"Unexpected API response format: {result}")
                 return ""
