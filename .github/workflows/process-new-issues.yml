@@ -44,9 +44,7 @@ jobs:
       - name: Process Issue
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SPARK_APP_ID: ${{ secrets.SPARK_APP_ID }}
-          SPARK_API_KEY: ${{ secrets.SPARK_API_KEY }}
-          SPARK_API_SECRET: ${{ secrets.SPARK_API_SECRET }}
+          API_PASSWORD: ${{ secrets.API_PASSWORD }} 
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
