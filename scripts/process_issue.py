@@ -19,15 +19,11 @@ class AIService:
         print(f"API Password configured: {bool(self.api_password)}")
         self.api_url = "https://spark-api-open.xf-yun.com/v1/chat/completions"
         self.user_id = "michael180831"
-        
-        # 记录初始化时间
         self.init_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"Service initialized at (UTC): {self.init_time}")
 
     def clean_content(self, content: str) -> str:
         """清理内容，移除重复的状态信息"""
         try:
-            # 找到第一个 "---" 之前的内容
             if "---" in content:
                 cleaned = content.split("---")[0].strip()
                 print(f"Content cleaned. Original length: {len(content)}, Cleaned length: {len(cleaned)}")
@@ -40,22 +36,21 @@ class AIService:
     def is_job_related(self, content: str) -> bool:
         """判断内容是否与招聘相关"""
         try:
+            current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
             print("\n=== Job Content Detection ===")
-            print(f"Processing time (UTC): {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"Processing time (UTC): {current_time}")
             print(f"Processing user: {self.user_id}")
             
-            # 清理内容
             cleaned_content = self.clean_content(content)
             print(f"\nContent to analyze:\n{'-' * 50}\n{cleaned_content}\n{'-' * 50}\n")
             
-            # 构造提示语
-            prompt = "请判断以下内容是否是招聘信息。\n" + \
-                     "要求：\n" + \
-                     "1. 只需要回答"是"或"否"\n" + \
-                     "2. 不需要解释原因\n" + \
-                     "3. 不需要其他任何额外文字\n" + \
-                     "内容：\n" + \
-                     cleaned_content
+            prompt = f"""请判断以下内容是否是招聘信息。
+要求：
+1. 只需要回答"是"或"否"
+2. 不需要解释原因
+3. 不需要其他任何额外文字
+内容：
+{cleaned_content}"""
             
             print("Sending detection request to AI...")
             response = self._call_spark_api(prompt)
@@ -70,10 +65,10 @@ class AIService:
             
             return is_job
             
-    except Exception as e:
-        print(f"Error in is_job_related: {str(e)}")
-        traceback.print_exc()
-        return False
+        except Exception as e:
+            print(f"Error in is_job_related: {str(e)}")
+            traceback.print_exc()
+            return False
 
     def _call_spark_api(self, prompt: str) -> str:
         """调用星火API"""
