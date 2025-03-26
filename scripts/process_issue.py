@@ -8,30 +8,35 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 class AIService:
-    """AI服务接口"""
     def __init__(self):
-        self.api_key = os.environ.get('SILKLAB_API_KEY')
-        print(f"Silklab API Key exists: {bool(self.api_key)}")
-        self.api_url = "https://api.silklab.ai/v1/chat/completions"
+        # 修改环境变量名称 (原来是 SILKLAB_API_KEY)
+        self.api_key = os.environ.get('AI_API_KEY')  # 使用你在 GitHub Secrets 中设置的新名称
+        print(f"API Key exists: {bool(self.api_key)}")
+        # 修改 API URL 为星火-Lite的接口地址
+        self.api_url = "https://spark-api.xf-yun.com/v1.1/chat"  # 根据星火API的实际地址修改
 
     def _call_silklab_api(self, prompt: str) -> str:
-        """调用硅基流动API"""
-        try:
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
-            }
-            data = {
-                "model": "silicon-wiz-7b",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.7
-            }
-            response = requests.post(self.api_url, headers=headers, json=data)
-            response.raise_for_status()
-            return response.json()['choices'][0]['message']['content']
-        except Exception as e:
-            print(f"Error calling Silklab API: {str(e)}")
-            return ""
+        # 需要重命名这个方法
+        def _call_spark_api(self, prompt: str) -> str:
+            try:
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+                # 修改请求体格式为星火API要求的格式
+                data = {
+                    # 根据星火API的实际要求修改请求参数
+                    "messages": [{"role": "user", "content": prompt}],
+                    # 删除或修改 model 参数
+                    "temperature": 0.7
+                }
+                response = requests.post(self.api_url, headers=headers, json=data)
+                response.raise_for_status()
+                # 根据星火API的响应格式修改解析逻辑
+                return response.json()['XXX']['XXX']['content']  # 根据实际响应格式调整
+            except Exception as e:
+                print(f"Error calling Spark API: {str(e)}")
+                return ""
 
     def is_job_related(self, text: str) -> bool:
         """判断文章是否与招聘/求职相关"""
