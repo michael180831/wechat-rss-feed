@@ -91,22 +91,143 @@ class AIService:
             return {"error": str(e)}
 
     def is_job_related(self, text: str) -> bool:
-        """判断文章是否与招聘/求职相关"""
+    """判断文章是否与招聘/求职相关"""
         try:
             print(f"Checking if text is job related. Text length: {len(text)}")
-            prompt = f"""
-            请判断以下文章是否与招聘或求职相关。
-            只返回 true 或 false。
-            
-            文章内容：
-            {text}
-            """
-            response = self._call_spark_api(prompt)
-            print(f"AI response for job relevance: {response}")
-            return 'true' in response.lower()
-        except Exception as e:
-            print(f"Error checking job relevance: {str(e)}")
-            return False
+        
+            # 第一层：关键词匹配
+            print("Performing basic keyword check...")
+            if not self._check_basic_keywords(text):
+                print("Failed basic keyword check")
+                return False
+        
+            # 第二层：AI深度分析
+            print("Performing AI deep analysis...")
+            is_job = self._ai_deep_analysis(text)
+            print(f"AI deep analysis result: {is_job}")
+        
+            return is_job
+        
+    except Exception as e:
+        print(f"Error checking job relevance: {str(e)}")
+        return False
+        
+    def _check_basic_keywords(self, text: str) -> bool:
+        """基础关键词匹配"""
+        # 招聘核心词集合
+        core_keywords = {
+            '招聘', '诚聘', '急聘', '招人', '招工', '急招', '招贤', '招兵买马', 
+        '纳新', '扩招', '高薪聘请', '高薪诚聘', '内部推荐', '人才引进', 
+        '人才招募', '招骋', '急佂', '招蓦', '人材'
+        }
+    
+        # 具体岗位词集合
+        position_keywords = {
+            '招学徒', '招客服', '招文员', '招宝妈', '招保洁', '招护工', '招阿姨',
+            '招驻场', '招跟车', '招打包', '招分拣', '招装卸', '招组装', '招串珠',
+            '招地推', '招派单', '招充场', '招扫码', '招代理', '招加盟', '招合伙人',
+            '招跟班', '招洗碗工', '招操作工', '招日结工', '招顶班', '招替班', 
+            '招替工', '招寒假工', '招暑假工', '招临时', '招钟点'
+        }
+    
+        # 工作性质词集合
+        job_type_keywords = {
+            '全职', '兼职', '实习', '临时工', '长期工', '短期工', '小时工',
+            '日结工', '假期工', '学生工', '寒假工', '暑假工', '钟点工',
+            '替班', '顶班', '临时'
+            }
+    
+        # 待遇相关词集合
+        benefit_keywords = {
+            '日结', '月结', '现结', '压三天', '包吃住', '包住宿', '报销路费',
+            '提成高', '绩效奖', '待遇优', '综合薪资', '计件工资', '多劳多得',
+            '房补', '餐补', '车补', '油补', '全勤奖', '年底双薪',
+            '月入过万', '轻松过万', '上班自由', '时间自由', '不打卡', '可预支',
+            '学费返还', '带薪培训', '工资透明', '现金结算'
+        }    
+    
+        # 工作模式词集合
+        work_mode_keywords = {
+            '做六休一', '两班倒', '长白班', '站立工作',
+            '手工外发', '在家可做', '代加工', '手机兼职'
+        }
+    
+        # 普通用语词集合（方言或口语化表达）
+        colloquial_keywords = {
+            '找人手', '找工人', '找师傅', '带徒弟', '找帮手', '添人手',
+            '添劳力', '招劳力', '请人做野', '请帮工', '请师傅', '帮工',
+            '跑腿儿', '整人手', '缺帮手', '找干活麻溜的', '力工',
+            '寻师傅一名', '找小工', '打零工', '出大力的', '干体力活'
+        }
+    
+        # 转换为小写进行匹配
+        text_lower = text.lower()
+        
+        # 检查各类关键词
+        has_core = any(keyword in text_lower for keyword in core_keywords)
+        has_position = any(keyword in text_lower for keyword in position_keywords)
+        has_job_type = any(keyword in text_lower for keyword in job_type_keywords)
+        has_benefit = any(keyword in text_lower for keyword in benefit_keywords)
+        has_work_mode = any(keyword in text_lower for keyword in work_mode_keywords)
+        has_colloquial = any(keyword in text_lower for keyword in colloquial_keywords)
+        
+        # 检查是否包含联系方式（使用正则表达式）
+        has_contact = bool(re.search(r'(?:联系方式|联系电话|微信|电话|手机号|QQ)[:：]?\s*\d+', text))
+        
+        # 打印调试信息
+        print(f"Basic keyword check results:")
+        print(f"Has core keywords: {has_core}")
+        print(f"Has position keywords: {has_position}")
+        print(f"Has job type keywords: {has_job_type}")
+        print(f"Has benefit keywords: {has_benefit}")
+        print(f"Has work mode keywords: {has_work_mode}")
+        print(f"Has colloquial keywords: {has_colloquial}")
+        print(f"Has contact info: {has_contact}")
+        
+        # 判断逻辑
+        is_job_post = (
+            (has_core and (has_contact or has_benefit)) or
+            (has_position and (has_contact or has_benefit)) or
+            (has_colloquial and has_contact and (has_benefit or has_job_type))
+        )
+        
+        print(f"Final basic check result: {is_job_post}")
+        return is_job_post
+
+    def _ai_deep_analysis(self, text: str) -> bool:
+        """AI深度分析"""
+        prompt = f"""
+        请分析以下文本是否为招聘信息。必须同时满足以下条件中的至少3个才能判定为招聘信息：
+        1. 包含具体工作职位
+        2. 包含工作地点
+        3. 包含薪资待遇说明
+        4. 包含工作要求或条件
+        5. 包含联系方式
+        6. 包含工作时间说明
+    
+        请逐条分析每个条件是否满足，然后给出最终判断。
+    
+        文本内容：
+        {text}
+    
+        请按以下格式返回结果：
+        1. 工作职位: 是/否
+        2. 工作地点: 是/否
+        3. 薪资待遇: 是/否
+        4. 工作要求: 是/否
+        5. 联系方式: 是/否
+        6. 工作时间: 是/否
+        
+        满足条件数: X
+        最终判断: true/false
+        """
+        response = self._call_spark_api(prompt)
+        print(f"AI analysis response:\n{response}")
+        
+        # 提取最终判断结果
+        if '最终判断: true' in response.lower():
+            return True
+        return False
 
 class NotificationService:
     """通知服务"""
