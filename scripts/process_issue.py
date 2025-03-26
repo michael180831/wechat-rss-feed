@@ -48,13 +48,15 @@ class AIService:
             cleaned_content = self.clean_content(content)
             print(f"\nContent to analyze:\n{'-' * 50}\n{cleaned_content}\n{'-' * 50}\n")
             
+            # 修复这里的字符串格式
             prompt = (
                 "请判断以下内容是否是招聘信息。\n"
                 "要求：\n"
                 "1. 只需要回答"是"或"否"\n"
                 "2. 不需要解释原因\n"
                 "3. 不需要其他任何额外文字\n"
-                f"内容：\n{cleaned_content}"
+                "内容：\n"
+                f"{cleaned_content}"
             )
             
             print("Sending detection request to AI...")
@@ -88,7 +90,7 @@ class AIService:
             print("Headers configured (auth length):", len(str(self.api_password)))
             
             data = {
-                "model": "lite",  # Spark Lite 版本
+                "model": "lite",
                 "user": self.user_id,
                 "messages": [
                     {
