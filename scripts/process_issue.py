@@ -232,70 +232,93 @@ class AIService:
 class NotificationService:
     """通知服务"""
     def __init__(self):
+        print("\n=== Email Configuration Initialization ===")
         self.sender = os.environ.get('EMAIL_SENDER')
         self.password = os.environ.get('EMAIL_PASSWORD')
         self.recipient = os.environ.get('EMAIL_RECIPIENT')
         
-        # 添加调试信息
-        print(f"Sender email configured: {bool(self.sender)}")
-        print(f"Email password configured: {bool(self.password)}")
-        print(f"Recipient email configured: {bool(self.recipient)}")
+        # 详细的配置信息打印
+        print(f"Sender email: {self.sender if self.sender else 'Not configured'}")
+        print(f"Password length: {len(self.password) if self.password else 'Not configured'}")
+        print(f"Recipient email: {self.recipient if self.recipient else 'Not configured'}")
         
         # QQ邮箱设置
-        if '@qq.com' in self.sender:
-            self.smtp_server = 'smtp.qq.com'
-            self.smtp_port = 587  # 使用587端口
-            self.use_ssl = False  # 使用 STARTTLS
-        else:
-            print(f"Warning: Using default SMTP settings for {self.sender}")
-            self.smtp_server = 'smtp.qq.com'
-            self.smtp_port = 587
-            self.use_ssl = False
+        self.smtp_server = 'smtp.qq.com'
+        self.smtp_port = 465  # 改回使用465端口
+        self.use_ssl = True   # 使用SSL
+        
+        print(f"SMTP Server: {self.smtp_server}")
+        print(f"SMTP Port: {self.smtp_port}")
+        print(f"Using SSL: {self.use_ssl}")
+        print("=== Configuration Complete ===\n")
 
     def send_email(self, summary: Dict[str, str], article_url: str) -> bool:
         """发送邮件通知"""
+        print("\n=== Starting Email Sending Process ===")
         try:
-            print("Starting email sending process...")
-            print(f"SMTP Server: {self.smtp_server}")
-            print(f"SMTP Port: {self.smtp_port}")
-            print(f"Using SSL: {self.use_ssl}")
-            
+            # 1. 准备邮件内容
+            print("Preparing email content...")
             msg = MIMEMultipart()
             msg['From'] = self.sender
             msg['To'] = self.recipient
             msg['Subject'] = "新的招聘信息"
-    
+            print(f"Email headers set: From={msg['From']}, To={msg['To']}")
+
             # 构建邮件内容
             content = "新的招聘信息摘要：\n\n"
             for key, value in summary.items():
                 content += f"{key}: {value}\n"
             content += f"\n原文链接：{article_url}"
-    
+            
+            print("Email content prepared. Content length:", len(content))
             msg.attach(MIMEText(content, 'plain', 'utf-8'))
-    
-            # 发送邮件
-            print("Connecting to SMTP server...")
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-            server.set_debuglevel(1)  # 添加调试级别
+
+            # 2. 连接SMTP服务器
+            print(f"\nConnecting to SMTP server {self.smtp_server}:{self.smtp_port}")
+            if self.use_ssl:
+                print("Using SSL connection...")
+                server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port)
+            else:
+                print("Using standard connection with STARTTLS...")
+                server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+                server.starttls()
             
-            print("Starting TLS...")
-            server.starttls()  # 启用 TLS
-            
-            print("Logging into SMTP server...")
+            server.set_debuglevel(1)  # 启用SMTP详细日志
+
+            # 3. 登录
+            print("\nAttempting to login...")
             server.login(self.sender, self.password)
-            
-            print("Sending email...")
+            print("Login successful!")
+
+            # 4. 发送邮件
+            print("\nSending email...")
             server.send_message(msg)
+            
+            # 5. 关闭连接
+            print("Closing SMTP connection...")
             server.quit()
-    
-            print("Email sent successfully!")
+
+            print("=== Email Sent Successfully! ===\n")
             return True
-    
+
+        except smtplib.SMTPAuthenticationError as e:
+            print(f"\n=== SMTP Authentication Error ===")
+            print(f"Error details: {str(e)}")
+            print("This usually means the password (authorization code) is incorrect")
+            return False
+            
+        except smtplib.SMTPException as e:
+            print(f"\n=== SMTP Error ===")
+            print(f"Error type: {e.__class__.__name__}")
+            print(f"Error details: {str(e)}")
+            return False
+            
         except Exception as e:
-            print(f"Error sending email: {str(e)}")
-            print(f"Full error details: ", e.__class__.__name__)
+            print(f"\n=== Unexpected Error ===")
+            print(f"Error type: {e.__class__.__name__}")
+            print(f"Error details: {str(e)}")
             import traceback
-            print(f"Stack trace:\n{traceback.format_exc()}")
+            print(f"Full stack trace:\n{traceback.format_exc()}")
             return False
 
 def extract_content_and_link(body: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
