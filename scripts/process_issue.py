@@ -2,12 +2,13 @@ import os
 import requests
 import json
 import re
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import traceback
+import github
 
 class AIService:
     """AI服务接口"""
@@ -21,36 +22,7 @@ class AIService:
     def _call_spark_api(self, prompt: str) -> str:
         """调用星火API"""
         try:
-            print("Preparing API call...")
-            
-            headers = {
-                "Authorization": f"Bearer {self.api_password}",
-                "Content-Type": "application/json"
-            }
-            
-            print("Headers configured (auth length):", len(str(self.api_password)))
-            
-            data = {
-                "model": "lite",  # Spark Lite 版本
-                "user": self.user_id,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "你是一个专业的招聘信息分析助手"
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            }
-            
-            print(f"Making request to {self.api_url}")
-            # 打印请求信息（注意不显示具体的 Authorization 值）
-            safe_headers = headers.copy()
-            safe_headers['Authorization'] = '***'
-            print(f"Request headers: {safe_headers}")
-            print(f"Request data: {data}")
+            # ... 前面的代码保持不变 ...
             
             response = requests.post(self.api_url, headers=headers, json=data)
             
@@ -58,13 +30,17 @@ class AIService:
             if response.status_code != 200:
                 print(f"Response headers: {response.headers}")
                 print(f"Response content: {response.text}")
+                return ""
                 
-            response.raise_for_status()
-            
             result = response.json()
             if 'choices' in result and len(result['choices']) > 0:
                 content = result['choices'][0]['message']['content']
-                return content
+                # 尝试解析返回的内容为 JSON
+                try:
+                    json_content = json.loads(content)
+                    return json.dumps(json_content, ensure_ascii=False)
+                except json.JSONDecodeError:
+                    return content
             else:
                 print(f"Unexpected API response format: {result}")
                 return ""
@@ -73,6 +49,35 @@ class AIService:
             print(f"Error calling Spark API: {str(e)}")
             traceback.print_exc()
             return ""
+
+def add_job_label(gh: github.Github, issue_number: int) -> None:
+    """添加招聘标签到 issue"""
+    try:
+        repo = gh.get_repo(os.environ.get('GITHUB_REPOSITORY', 'michael180831/wechat-rss-feed'))
+        issue = repo.get_issue(issue_number)
+        issue.add_to_labels("jobs")
+        print(f"Successfully added 'jobs' label to issue #{issue_number}")
+    except Exception as e:
+        print(f"Error adding job label: {str(e)}")
+        traceback.print_exc()
+
+def process_issue(issue: Dict[str, Any]) -> bool:
+    """处理 issue"""
+    try:
+        # ... 其他代码 ...
+
+        # 使用 GitHub 实例调用 add_job_label
+        gh = github.Github(os.environ['GITHUB_TOKEN'])
+        add_job_label(gh, issue['number'])
+        
+        return True
+    except Exception as e:
+        print("\n=== Error Report ===")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        print("Stack trace:")
+        traceback.print_exc()
+        return False
 
     def summarize(self, content: str, biz: str) -> Dict[str, str]:
         """生成文章总结"""
