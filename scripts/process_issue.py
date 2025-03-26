@@ -16,8 +16,7 @@ class AIService:
         if not self.api_password:
             raise ValueError("API_PASSWORD environment variable is not set")
         self.api_url = "https://spark-api-open.xf-yun.com/v1/chat/completions"
-        # 从URL中提取host
-        self.host = "spark-api-open.xf-yun.com"
+        self.user_id = "michael180831"  # 使用您的 GitHub 登录名作为用户标识
 
     def _call_spark_api(self, prompt: str) -> str:
         """调用星火API"""
@@ -25,15 +24,15 @@ class AIService:
             print("Preparing API call...")
             
             headers = {
-                "Authorization": self.api_password,
-                "Content-Type": "application/json",
-                "host": self.host  # 添加 host 头部
+                "Authorization": f"Bearer {self.api_password}",
+                "Content-Type": "application/json"
             }
             
             print("Headers configured (auth length):", len(str(self.api_password)))
             
             data = {
-                "model": "generalv1.5",
+                "model": "lite",  # Spark Lite 版本
+                "user": self.user_id,
                 "messages": [
                     {
                         "role": "system",
@@ -47,7 +46,11 @@ class AIService:
             }
             
             print(f"Making request to {self.api_url}")
-            print(f"Request headers: {headers}")  # 添加这行来打印完整的请求头（注意不要打印 Authorization 的值）
+            # 打印请求信息（注意不显示具体的 Authorization 值）
+            safe_headers = headers.copy()
+            safe_headers['Authorization'] = '***'
+            print(f"Request headers: {safe_headers}")
+            print(f"Request data: {data}")
             
             response = requests.post(self.api_url, headers=headers, json=data)
             
