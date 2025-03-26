@@ -10,6 +10,10 @@ from datetime import datetime
 import traceback
 import github
 
+# 全局常量
+CURRENT_TIME = "2025-03-26 15:55:01"  # 使用提供的确切时间
+CURRENT_USER = "michael180831"    # 使用提供的用户登录名
+
 class AIService:
     """AI服务接口"""
     def __init__(self):
@@ -18,8 +22,9 @@ class AIService:
             raise ValueError("API_PASSWORD environment variable is not set")
         print(f"API Password configured: {bool(self.api_password)}")
         self.api_url = "https://spark-api-open.xf-yun.com/v1/chat/completions"
-        self.user_id = "michael180831"
-        self.init_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        self.user_id = CURRENT_USER
+        self.init_time = CURRENT_TIME
+        print(f"Service initialized at (UTC): {self.init_time}")
 
     def clean_content(self, content: str) -> str:
         """清理内容，移除重复的状态信息"""
@@ -33,150 +38,54 @@ class AIService:
             print(f"Error in clean_content: {str(e)}")
             return content
 
-    def is_job_related(self, content: str) -> bool:
-        """判断内容是否与招聘相关"""
+    def is_job_related(self, text: str) -> bool:
+        """判断文章是否与招聘/求职相关"""
         try:
-            current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-            print("\n=== Job Content Detection ===")
-            print(f"Processing time (UTC): {current_time}")
-            print(f"Processing user: {self.user_id}")
+            print(f"Checking if text is job related. Text length: {len(text)}")
+            print(f"Text preview: {text[:200]}...")
             
-            cleaned_content = self.clean_content(content)
-            print(f"\nContent to analyze:\n{'-' * 50}\n{cleaned_content}\n{'-' * 50}\n")
+            print("Performing basic keyword check...")
+            basic_keywords_result = self._check_basic_keywords(text)
+            print(f"Basic keywords result: {basic_keywords_result}")
             
-            prompt = f"""请判断以下内容是否是招聘信息。
-要求：
-1. 只需要回答"是"或"否"
-2. 不需要解释原因
-3. 不需要其他任何额外文字
-内容：
-{cleaned_content}"""
-            
-            print("Sending detection request to AI...")
-            response = self._call_spark_api(prompt)
-            
-            if not response:
-                print("No response from AI service")
+            if not basic_keywords_result:
+                print("Failed basic keyword check")
                 return False
-                
-            print(f"AI Response: {response}")
-            is_job = "是" in response
-            print(f"Detection result: {'是招聘信息' if is_job else '不是招聘信息'}")
+            
+            print("Performing AI deep analysis...")
+            is_job = self._ai_deep_analysis(text)
+            print(f"AI deep analysis result: {is_job}")
             
             return is_job
             
         except Exception as e:
-            print(f"Error in is_job_related: {str(e)}")
-            traceback.print_exc()
+            print(f"Error checking job relevance: {str(e)}")
             return False
-
-    def _call_spark_api(self, prompt: str) -> str:
-        """调用星火API"""
-        try:
-            print("Preparing API call...")
-            
-            headers = {
-                "Authorization": f"Bearer {self.api_password}",
-                "Content-Type": "application/json"
-            }
-            
-            print("Headers configured (auth length):", len(str(self.api_password)))
-            
-            data = {
-                "model": "lite",
-                "user": self.user_id,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "你是一个专业的招聘信息分析助手"
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            }
-            
-            print(f"Making request to {self.api_url}")
-            safe_headers = headers.copy()
-            safe_headers['Authorization'] = '***'
-            print(f"Request headers: {safe_headers}")
-            print(f"Request data: {data}")
-            
-            response = requests.post(self.api_url, headers=headers, json=data)
-            
-            print(f"Response status code: {response.status_code}")
-            if response.status_code != 200:
-                print(f"Response headers: {response.headers}")
-                print(f"Response content: {response.text}")
-                return ""
-                
-            result = response.json()
-            if 'choices' in result and len(result['choices']) > 0:
-                content = result['choices'][0]['message']['content']
-                return content
-            else:
-                print(f"Unexpected API response format: {result}")
-                return ""
-                
-        except Exception as e:
-            print(f"Error calling Spark API: {str(e)}")
-            traceback.print_exc()
-            return ""
-
-def add_job_label(gh: github.Github, issue_number: int) -> None:
-    """添加招聘标签到 issue"""
-    try:
-        repo = gh.get_repo(os.environ.get('GITHUB_REPOSITORY', 'michael180831/wechat-rss-feed'))
-        issue = repo.get_issue(issue_number)
-        issue.add_to_labels("jobs")
-        print(f"Successfully added 'jobs' label to issue #{issue_number}")
-    except Exception as e:
-        print(f"Error adding job label: {str(e)}")
-        traceback.print_exc()
-
-def process_issue(issue: Dict[str, Any]) -> bool:
-    """处理 issue"""
-    try:
-        # ... 其他代码 ...
-
-        # 使用 GitHub 实例调用 add_job_label
-        gh = github.Github(os.environ['GITHUB_TOKEN'])
-        add_job_label(gh, issue['number'])
-        
-        return True
-    except Exception as e:
-        print("\n=== Error Report ===")
-        print(f"Error type: {type(e).__name__}")
-        print(f"Error message: {str(e)}")
-        print("Stack trace:")
-        traceback.print_exc()
-        return False
 
     def summarize(self, content: str, biz: Optional[str] = None) -> Dict[str, Any]:
         """总结内容，返回结构化信息"""
         try:
             print("\n=== Content Summary ===")
-            print(f"Processing time (UTC): {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"Processing time (UTC): {self.init_time}")
             
             cleaned_content = self.clean_content(content)
             
             prompt = f"""请分析以下招聘信息，并以JSON格式返回以下字段：
-    1. title: 职位名称
-    2. company: 公司名称（如果有）
-    3. salary: 薪资信息（如果有）
-    4. location: 工作地点
-    5. requirements: 职位要求（列表形式）
-    6. benefits: 福利待遇（列表形式）
-    7. contact: 联系方式
-    8. work_type: 工作类型（全职/兼职/实习等）
-    9. work_time: 工作时间（如果有）
-    
-    内容：
-    {cleaned_content}
-    
-    请确保返回格式为有效的JSON格式。如果某字段信息不存在，将其值设为null。"""
-    
+1. title: 职位名称
+2. company: 公司名称（如果有）
+3. salary: 薪资信息（如果有）
+4. location: 工作地点
+5. requirements: 职位要求（列表形式）
+6. benefits: 福利待遇（列表形式）
+7. contact: 联系方式
+8. work_type: 工作类型（全职/兼职/实习等）
+9. work_time: 工作时间（如果有）
+
+内容：
+{cleaned_content}
+
+请确保返回格式为有效的JSON格式。如果某字段信息不存在，将其值设为null。"""
+            
             print("Sending summary request to AI...")
             response = self._call_spark_api(prompt)
             
@@ -189,7 +98,6 @@ def process_issue(issue: Dict[str, Any]) -> bool:
                 }
                 
             try:
-                # 尝试解析JSON响应
                 summary = json.loads(response)
                 summary["biz"] = biz
                 summary["raw_content"] = cleaned_content
@@ -212,33 +120,6 @@ def process_issue(issue: Dict[str, Any]) -> bool:
                 "biz": biz,
                 "raw_content": content
             }
-
-    def is_job_related(self, text: str) -> bool:
-        """判断文章是否与招聘/求职相关"""
-        try:
-            print(f"Checking if text is job related. Text length: {len(text)}")
-            print(f"Text preview: {text[:200]}...")  # 打印文本预览
-            
-            # 第一层：关键词匹配
-            print("Performing basic keyword check...")
-            basic_keywords_result = self._check_basic_keywords(text)
-            print(f"Basic keywords result: {basic_keywords_result}")
-            
-            if not basic_keywords_result:
-                print("Failed basic keyword check")
-                return False
-            
-            # 第二层：AI深度分析
-            print("Performing AI deep analysis...")
-            is_job = self._ai_deep_analysis(text)
-            print(f"AI deep analysis result: {is_job}")
-            
-            return is_job
-            
-        except Exception as e:
-            print(f"Error checking job relevance: {str(e)}")
-            return False
-    
     def _check_basic_keywords(self, text: str) -> bool:
         """基础关键词匹配"""
         # 招聘核心词集合
@@ -298,7 +179,7 @@ def process_issue(issue: Dict[str, Any]) -> bool:
         has_work_mode = any(keyword in text_lower for keyword in work_mode_keywords)
         has_colloquial = any(keyword in text_lower for keyword in colloquial_keywords)
         
-        # 检查是否包含联系方式（使用正则表达式）
+        # 检查是否包含联系方式
         has_contact = bool(re.search(r'(?:联系方式|联系电话|微信|电话|手机号|QQ)[:：]?\s*\d+', text))
         
         # 打印调试信息
@@ -351,11 +232,59 @@ def process_issue(issue: Dict[str, Any]) -> bool:
         response = self._call_spark_api(prompt)
         print(f"AI analysis response:\n{response}")
         
-        # 提取最终判断结果
-        if '最终判断: true' in response.lower():
-            return True
-        return False
+        return '最终判断: true' in response.lower()
 
+    def _call_spark_api(self, prompt: str) -> str:
+        """调用星火API"""
+        try:
+            print("Preparing API call...")
+            current_time = "2025-03-26 16:13:06"  # 使用提供的当前时间
+            
+            headers = {
+                "Authorization": f"Bearer {self.api_password}",
+                "Content-Type": "application/json"
+            }
+            
+            print("Headers configured (auth length):", len(str(self.api_password)))
+            
+            data = {
+                "model": "lite",
+                "user": self.user_id,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "你是一个专业的招聘信息分析助手"
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            }
+            
+            print(f"Making request to {self.api_url}")
+            print(f"Request time (UTC): {current_time}")
+            
+            response = requests.post(self.api_url, headers=headers, json=data)
+            
+            print(f"Response status code: {response.status_code}")
+            if response.status_code != 200:
+                print(f"Response headers: {response.headers}")
+                print(f"Response content: {response.text}")
+                return ""
+                
+            result = response.json()
+            if 'choices' in result and len(result['choices']) > 0:
+                content = result['choices'][0]['message']['content']
+                return content
+            else:
+                print(f"Unexpected API response format: {result}")
+                return ""
+                
+        except Exception as e:
+            print(f"Error calling Spark API: {str(e)}")
+            traceback.print_exc()
+            return ""
 class NotificationService:
     """通知服务"""
     def __init__(self):
@@ -364,26 +293,24 @@ class NotificationService:
         self.password = os.environ.get('EMAIL_PASSWORD')
         self.recipient = os.environ.get('EMAIL_RECIPIENT')
         
-        # 详细的配置信息打印
         print(f"Sender email: {self.sender if self.sender else 'Not configured'}")
         print(f"Password length: {len(self.password) if self.password else 'Not configured'}")
         print(f"Recipient email: {self.recipient if self.recipient else 'Not configured'}")
         
-        # QQ邮箱设置
         self.smtp_server = 'smtp.qq.com'
-        self.smtp_port = 465  # 改回使用465端口
-        self.use_ssl = True   # 使用SSL
+        self.smtp_port = 465
+        self.use_ssl = True
         
         print(f"SMTP Server: {self.smtp_server}")
         print(f"SMTP Port: {self.smtp_port}")
         print(f"Using SSL: {self.use_ssl}")
+        print(f"Initialization time (UTC): {CURRENT_TIME}")
         print("=== Configuration Complete ===\n")
 
     def send_email(self, summary: Dict[str, str], article_url: str) -> bool:
         """发送邮件通知"""
         print("\n=== Starting Email Sending Process ===")
         try:
-            # 1. 准备邮件内容
             print("Preparing email content...")
             msg = MIMEMultipart()
             msg['From'] = self.sender
@@ -391,7 +318,6 @@ class NotificationService:
             msg['Subject'] = "新的招聘信息"
             print(f"Email headers set: From={msg['From']}, To={msg['To']}")
 
-            # 构建邮件内容
             content = "新的招聘信息摘要：\n\n"
             for key, value in summary.items():
                 content += f"{key}: {value}\n"
@@ -400,7 +326,6 @@ class NotificationService:
             print("Email content prepared. Content length:", len(content))
             msg.attach(MIMEText(content, 'plain', 'utf-8'))
 
-            # 2. 连接SMTP服务器
             print(f"\nConnecting to SMTP server {self.smtp_server}:{self.smtp_port}")
             if self.use_ssl:
                 print("Using SSL connection...")
@@ -410,18 +335,15 @@ class NotificationService:
                 server = smtplib.SMTP(self.smtp_server, self.smtp_port)
                 server.starttls()
             
-            server.set_debuglevel(1)  # 启用SMTP详细日志
+            server.set_debuglevel(1)
 
-            # 3. 登录
             print("\nAttempting to login...")
             server.login(self.sender, self.password)
             print("Login successful!")
 
-            # 4. 发送邮件
             print("\nSending email...")
             server.send_message(msg)
             
-            # 5. 关闭连接
             print("Closing SMTP connection...")
             server.quit()
 
@@ -444,26 +366,36 @@ class NotificationService:
             print(f"\n=== Unexpected Error ===")
             print(f"Error type: {e.__class__.__name__}")
             print(f"Error details: {str(e)}")
-            import traceback
-            print(f"Full stack trace:\n{traceback.format_exc()}")
+            print(f"Error time (UTC): {CURRENT_TIME}")
+            traceback.print_exc()
             return False
+
+def add_job_label(gh: github.Github, issue_number: int) -> None:
+    """添加招聘标签到 issue"""
+    try:
+        repo = gh.get_repo(os.environ.get('GITHUB_REPOSITORY', 'michael180831/wechat-rss-feed'))
+        issue = repo.get_issue(issue_number)
+        issue.add_to_labels("jobs")
+        print(f"Successfully added 'jobs' label to issue #{issue_number}")
+    except Exception as e:
+        print(f"Error adding job label: {str(e)}")
+        traceback.print_exc()
 
 def extract_content_and_link(body: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """从Issue内容中提取文章内容和链接"""
     try:
-        print(f"Extracting content from body: {body[:100]}...")  # 打印前100个字符用于调试
+        print(f"Extracting content from body: {body[:100]}...")
         
-        # 在"#原内容"之后的所有内容作为文章内容
         content_match = re.search(r'#原内容\s*([\s\S]*?)(?=\s*$)', body)
         content = content_match.group(1).strip() if content_match else None
         
-        # 尝试提取微信链接和biz参数
         url_match = re.search(r'https?://mp\.weixin\.qq\.com/[^\s]+', body)
         url = url_match.group(0) if url_match else None
         
         biz_match = re.search(r'__biz=([^&]+)', url) if url else None
         biz = biz_match.group(1) if biz_match else None
         
+        print(f"Extraction time (UTC): {CURRENT_TIME}")
         print(f"Extracted content length: {len(content) if content else 0}")
         print(f"Extracted URL: {url}")
         print(f"Extracted biz: {biz}")
@@ -473,7 +405,6 @@ def extract_content_and_link(body: str) -> tuple[Optional[str], Optional[str], O
     except Exception as e:
         print(f"Error extracting content: {str(e)}")
         return None, None, None
-
 def update_issue_with_status(issue_number: int, original_body: str, status: str) -> bool:
     """更新Issue状态"""
     try:
@@ -482,14 +413,13 @@ def update_issue_with_status(issue_number: int, original_body: str, status: str)
             "Accept": "application/vnd.github.v3+json"
         }
         
-        # 构建更新后的内容
         updated_body = f"{original_body}\n\n---\n\n状态：{status}"
         
-        # 发送更新请求
-        url = f"https://api.github.com/repos/michael180831/wechat-rss-feed/issues/{issue_number}"
+        url = f"https://api.github.com/repos/{CURRENT_USER}/wechat-rss-feed/issues/{issue_number}"
         response = requests.patch(url, headers=headers, json={"body": updated_body})
         response.raise_for_status()
         
+        print(f"Issue status updated at (UTC): {CURRENT_TIME}")
         return True
         
     except Exception as e:
@@ -504,19 +434,17 @@ def update_issue_with_summary(issue_number: int, original_body: str, summary: Di
             "Accept": "application/vnd.github.v3+json"
         }
         
-        # 构建总结内容
         summary_text = "\n\n---\n\n### AI总结\n"
         for key, value in summary.items():
             summary_text += f"- **{key}**: {value}\n"
             
-        # 更新Issue内容
         updated_body = original_body + summary_text
         
-        # 发送更新请求
-        url = f"https://api.github.com/repos/michael180831/wechat-rss-feed/issues/{issue_number}"
+        url = f"https://api.github.com/repos/{CURRENT_USER}/wechat-rss-feed/issues/{issue_number}"
         response = requests.patch(url, headers=headers, json={"body": updated_body})
         response.raise_for_status()
         
+        print(f"Issue summary updated at (UTC): {CURRENT_TIME}")
         print("Successfully updated issue with summary")
         return True
         
@@ -528,7 +456,8 @@ def process_issue():
     """处理新的 Issue"""
     try:
         print("\n=== Process Start ===")
-        print(f"Processing time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Processing time (UTC): {CURRENT_TIME}")
+        print(f"Processing user: {CURRENT_USER}")
         
         event_path = os.environ.get('GITHUB_EVENT_PATH')
         print(f"Event path: {event_path}")
@@ -545,7 +474,6 @@ def process_issue():
         print(f"Issue number: #{issue['number']}")
         print(f"Labels: {[label['name'] for label in issue.get('labels', [])]}")
         
-        # 提取内容和链接
         print("\n=== Content Extraction ===")
         content, article_url, biz = extract_content_and_link(issue['body'])
         print(f"Content length: {len(content) if content else 0}")
@@ -553,18 +481,16 @@ def process_issue():
         print(f"Biz: {biz}")
         print("Content preview:")
         print("-" * 50)
-        print(content[:500] if content else "No content")  # 只打印前500个字符
+        print(content[:500] if content else "No content")
         print("-" * 50)
         
         if not content:
             print("Error: No content found to process")
             return False
             
-        # 创建服务实例
         print("\n=== Service Initialization ===")
         ai_service = AIService()
         
-        # 判断是否与招聘相关
         print("\n=== Job Content Detection ===")
         is_job = ai_service.is_job_related(content)
         print(f"Job detection result: {is_job}")
@@ -579,27 +505,23 @@ def process_issue():
             print("Status updated: Not job related")
             return True
             
-        # 如果是招聘相关，继续处理
         print("\n=== Job Related - Processing ===")
         
-        # 生成总结
         print("Generating summary...")
         summary = ai_service.summarize(content, biz)
         print("Summary content:")
         print(json.dumps(summary, indent=2, ensure_ascii=False))
         
-        # 添加标签
         print("\nAdding jobs label...")
-        add_job_label(issue['number'])
+        gh = github.Github(os.environ['GITHUB_TOKEN'])
+        add_job_label(gh, issue['number'])
         print("Label added successfully")
         
-        # 发送通知邮件
         print("\n=== Sending Email Notification ===")
         notification_service = NotificationService()
         notification_success = notification_service.send_email(summary, article_url)
         print(f"Email sending result: {'Success' if notification_success else 'Failed'}")
         
-        # 更新 Issue
         print("\n=== Updating Issue with Summary ===")
         success = update_issue_with_summary(
             issue['number'],
@@ -608,9 +530,8 @@ def process_issue():
         )
         print(f"Issue update result: {'Success' if success else 'Failed'}")
         
-        # 处理结果总结
         print("\n=== Process Summary ===")
-        print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Time (UTC): {CURRENT_TIME}")
         print(f"Issue: #{issue['number']}")
         print(f"Content detection: Success")
         print(f"Job related: Yes")
@@ -622,12 +543,14 @@ def process_issue():
         
     except Exception as e:
         print("\n=== Error Report ===")
+        print(f"Error time (UTC): {CURRENT_TIME}")
         print(f"Error type: {type(e).__name__}")
         print(f"Error message: {str(e)}")
-        print(f"Stack trace:\n{traceback.format_exc()}")
+        print("Stack trace:")
+        traceback.print_exc()
         return False
-
 
 if __name__ == "__main__":
     success = process_issue()
     print(f"Process completed with status: {success}")
+    print(f"Completion time (UTC): {CURRENT_TIME}")
