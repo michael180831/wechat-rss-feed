@@ -8,53 +8,55 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 class AIService:
+    """AI服务接口"""
     def __init__(self):
-        # 修改环境变量名称 (原来是 SILKLAB_API_KEY)
-        self.api_key = os.environ.get('AI_API_KEY')  # 使用你在 GitHub Secrets 中设置的新名称
-        print(f"API Key exists: {bool(self.api_key)}")
-        # 修改 API URL 为星火-Lite的接口地址
-        self.api_url = "https://spark-api.xf-yun.com/v1.1/chat"  # 根据星火API的实际地址修改
+        self.app_id = os.environ.get('SPARK_APP_ID')
+        self.api_key = os.environ.get('SPARK_API_KEY')
+        self.api_secret = os.environ.get('SPARK_API_SECRET')
+        print(f"Spark API credentials configured: {bool(self.app_id and self.api_key and self.api_secret)}")
+        self.api_url = "wss://spark-api.xf-yun.com/v1.1/chat"
 
-    def _call_silklab_api(self, prompt: str) -> str:
-        # 需要重命名这个方法
-        def _call_spark_api(self, prompt: str) -> str:
-            try:
-                headers = {
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
-                # 修改请求体格式为星火API要求的格式
-                data = {
-                    # 根据星火API的实际要求修改请求参数
-                    "messages": [{"role": "user", "content": prompt}],
-                    # 删除或修改 model 参数
-                    "temperature": 0.7
-                }
-                response = requests.post(self.api_url, headers=headers, json=data)
-                response.raise_for_status()
-                # 根据星火API的响应格式修改解析逻辑
-                return response.json()['XXX']['XXX']['content']  # 根据实际响应格式调整
-            except Exception as e:
-                print(f"Error calling Spark API: {str(e)}")
-                return ""
-
-    def is_job_related(self, text: str) -> bool:
-        """判断文章是否与招聘/求职相关"""
+    def _call_spark_api(self, prompt: str) -> str:
+        """调用星火API"""
         try:
-            print(f"Checking if text is job related. Text length: {len(text)}")
-            prompt = f"""
-            请判断以下文章是否与招聘或求职相关。
-            只返回 true 或 false。
+            headers = {
+                "Content-Type": "application/json"
+            }
+            data = {
+                "header": {
+                    "app_id": self.app_id,
+                    "uid": "user"  # 可以是固定值
+                },
+                "parameter": {
+                    "chat": {
+                        "domain": "lite",
+                        "temperature": 0.7,
+                        "max_tokens": 1024,
+                    }
+                },
+                "payload": {
+                    "message": {
+                        "text": [
+                            {"role": "user", "content": prompt}
+                        ]
+                    }
+                }
+            }
+            response = requests.post(self.api_url, headers=headers, json=data)
+            response.raise_for_status()
             
-            文章内容：
-            {text}
-            """
-            response = self._call_ai_api(prompt)
-            print(f"AI response for job relevance: {response}")
-            return 'true' in response.lower()
+            # 解析响应
+            result = response.json()
+            if result['header']['code'] == 0:
+                content = result['payload']['choices']['text'][0]['content']
+                return content
+            else:
+                print(f"API error: {result['header']['message']}")
+                return ""
+                
         except Exception as e:
-            print(f"Error checking job relevance: {str(e)}")
-            return False
+            print(f"Error calling Spark API: {str(e)}")
+            return ""
 
     def summarize(self, content: str, biz: str) -> Dict[str, str]:
         """生成文章总结"""
@@ -76,7 +78,7 @@ class AIService:
             微信公众号biz: {biz}
             """
             
-            response = self._call_ai_api(prompt)
+            response = self._call_spark_api(prompt)
             # 尝试解析JSON响应
             try:
                 return json.loads(response)
@@ -87,6 +89,24 @@ class AIService:
         except Exception as e:
             print(f"Error generating summary: {str(e)}")
             return {"error": str(e)}
+
+    def is_job_related(self, text: str) -> bool:
+        """判断文章是否与招聘/求职相关"""
+        try:
+            print(f"Checking if text is job related. Text length: {len(text)}")
+            prompt = f"""
+            请判断以下文章是否与招聘或求职相关。
+            只返回 true 或 false。
+            
+            文章内容：
+            {text}
+            """
+            response = self._call_spark_api(prompt)
+            print(f"AI response for job relevance: {response}")
+            return 'true' in response.lower()
+        except Exception as e:
+            print(f"Error checking job relevance: {str(e)}")
+            return False
 
 class NotificationService:
     """通知服务"""
