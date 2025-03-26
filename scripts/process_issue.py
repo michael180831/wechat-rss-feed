@@ -48,16 +48,14 @@ class AIService:
             cleaned_content = self.clean_content(content)
             print(f"\nContent to analyze:\n{'-' * 50}\n{cleaned_content}\n{'-' * 50}\n")
             
-            # 修复这里的字符串格式
-            prompt = (
-                "请判断以下内容是否是招聘信息。\n"
-                "要求：\n"
-                "1. 只需要回答"是"或"否"\n"
-                "2. 不需要解释原因\n"
-                "3. 不需要其他任何额外文字\n"
-                "内容：\n"
-                f"{cleaned_content}"
-            )
+            # 构造提示语
+            prompt = "请判断以下内容是否是招聘信息。\n" + \
+                     "要求：\n" + \
+                     "1. 只需要回答"是"或"否"\n" + \
+                     "2. 不需要解释原因\n" + \
+                     "3. 不需要其他任何额外文字\n" + \
+                     "内容：\n" + \
+                     cleaned_content
             
             print("Sending detection request to AI...")
             response = self._call_spark_api(prompt)
@@ -71,11 +69,11 @@ class AIService:
             print(f"Detection result: {'是招聘信息' if is_job else '不是招聘信息'}")
             
             return is_job
-                
-        except Exception as e:
-            print(f"Error in is_job_related: {str(e)}")
-            traceback.print_exc()
-            return False
+            
+    except Exception as e:
+        print(f"Error in is_job_related: {str(e)}")
+        traceback.print_exc()
+        return False
 
     def _call_spark_api(self, prompt: str) -> str:
         """调用星火API"""
