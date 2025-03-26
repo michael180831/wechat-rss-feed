@@ -14,28 +14,26 @@ class AIService:
     def __init__(self):
         self.api_password = os.environ.get('API_PASSWORD')
         if not self.api_password:
-            print("Warning: API_PASSWORD is not configured")
-        else:
-            print("API Password is configured")
+            raise ValueError("API_PASSWORD environment variable is not set")
         self.api_url = "https://spark-api-open.xf-yun.com/v1/chat/completions"
+        # 从URL中提取host
+        self.host = "spark-api-open.xf-yun.com"
 
     def _call_spark_api(self, prompt: str) -> str:
         """调用星火API"""
         try:
-            # 在这里添加调试信息
             print("Preparing API call...")
             
             headers = {
-                # 注意：不要添加"Bearer "前缀，直接使用API密钥
                 "Authorization": self.api_password,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "host": self.host  # 添加 host 头部
             }
             
-            # 添加调试信息
-            print("Headers configured (auth length):", len(str(self.api_password)) if self.api_password else 0)
+            print("Headers configured (auth length):", len(str(self.api_password)))
             
             data = {
-                "model": "generalv1.5",  # SparkLite模型
+                "model": "generalv1.5",
                 "messages": [
                     {
                         "role": "system",
@@ -48,11 +46,11 @@ class AIService:
                 ]
             }
             
-            # 添加请求调试信息
             print(f"Making request to {self.api_url}")
+            print(f"Request headers: {headers}")  # 添加这行来打印完整的请求头（注意不要打印 Authorization 的值）
+            
             response = requests.post(self.api_url, headers=headers, json=data)
             
-            # 添加响应调试信息
             print(f"Response status code: {response.status_code}")
             if response.status_code != 200:
                 print(f"Response headers: {response.headers}")
