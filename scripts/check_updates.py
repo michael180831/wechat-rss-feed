@@ -4,6 +4,7 @@ from datetime import datetime
 import pytz
 import requests
 from send_email import send_email
+from article_parser import extract_article_info
 
 def load_account_info():
     """加载公众号配置信息"""
@@ -40,6 +41,20 @@ def get_account_name(biz, accounts, processed_biz_data):
     
     return f"未知公众号({biz})"
 
+def update_article_info(account_info, article_url):
+    """更新文章信息"""
+    try:
+        response = requests.get(article_url)
+        if response.status_code == 200:
+            article_info = extract_article_info(response.text)
+            if article_info:
+                account_info['latest_article'].update(article_info)
+                account_info['latest_article']['url'] = article_url
+                return True
+    except Exception as e:
+        print(f"更新文章信息时出错: {str(e)}")
+    return False
+
 def main():
     try:
         # 读取处理过的biz文件
@@ -54,9 +69,6 @@ def main():
             if original_biz in accounts:
                 accounts[original_biz]["variants"] = variants
         
-        # 保存更新后的账号信息
-        save_account_info(accounts)
-        
         current_time = get_beijing_time()
         check_time = current_time.strftime('%Y-%m-%d %H:%M:%S')
         
@@ -67,11 +79,23 @@ def main():
         for original_biz, variants in processed_biz_data.items():
             # 处理原始biz
             if original_biz not in checked_accounts:
-                account_name = get_account_name(original_biz, accounts, processed_biz_data)
-                update_msg = (
-                    f"公众号：{account_name}\n"
-                    f"识别码：{original_biz}\n"
-                )
+                account_info = accounts[original_biz]
+                account_name = account_info["name"]
+                
+                # 构建基本信息
+                update_msg = [
+                    f"公众号：{account_name}",
+                    f"识别码：{original_biz}"
+                ]
+                
+                # 添加最新文章信息
+                latest_article = account_info.get('latest_article', {})
+                if latest_article and latest_article.get('publish_time'):
+                    update_msg.extend([
+                        f"最新文章：{latest_article.get('title', '无标题')}",
+                        f"发布时间：{latest_article.get('publish_time', '未知')}",
+                        f"文章链接：{latest_article.get('url', '未知')}"
+                    ])
                 
                 # 如果有变体，添加变体信息
                 if variants:
@@ -80,11 +104,15 @@ def main():
                         variant_name = f"{account_name}{i}"
                         variant_info.append(f"变体{i}：{variant} ({variant_name})")
                     if variant_info:
-                        update_msg += "变体信息：\n" + "\n".join(variant_info) + "\n"
+                        update_msg.append("变体信息：")
+                        update_msg.extend(variant_info)
                 
-                update_msg += "-------------------"
-                update_messages.append(update_msg)
+                update_msg.append("-------------------")
+                update_messages.append("\n".join(update_msg))
                 checked_accounts.add(original_biz)
+        
+        # 保存更新后的账号信息
+        save_account_info(accounts)
         
         # 发送通知邮件
         if update_messages:
