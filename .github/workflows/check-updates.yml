@@ -29,6 +29,7 @@ jobs:
       - name: Check for updates
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         run: python scripts/check_updates.py
