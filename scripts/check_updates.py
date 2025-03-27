@@ -20,6 +20,15 @@ def main():
                 # 这里添加实际的检查逻辑
                 # 暂时跳过实际检查，返回测试结果
                 updates_found = True
+                
+                # 如果找到更新，发送通知邮件
+                if updates_found:
+                    send_email(
+                        subject="WeChat Updates Found",
+                        body=f"Found updates for account: {biz}\nTime: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}",
+                        is_error=False
+                    )
+                
             except Exception as e:
                 error_msg = f"Error checking account {biz}: {str(e)}"
                 print(error_msg)
