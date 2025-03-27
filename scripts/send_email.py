@@ -7,14 +7,11 @@ from datetime import datetime
 def send_notification_email(title, updated_accounts):
     """发送邮件通知"""
     try:
-        # 获取邮件配置
+        # 只需要邮箱和密码配置
         sender_email = os.environ.get('EMAIL_ADDRESS')
-        receiver_email = os.environ.get('EMAIL_ADDRESS')
+        receiver_email = os.environ.get('EMAIL_ADDRESS')  # 接收邮件地址与发送地址相同
         password = os.environ.get('EMAIL_PASSWORD')
-        smtp_server = os.environ.get('SMTP_SERVER')
-        smtp_port = int(os.environ.get('SMTP_PORT'))
 
-        # 创建邮件
         message = MIMEMultipart()
         message["From"] = sender_email
         message["To"] = receiver_email
@@ -29,6 +26,11 @@ def send_notification_email(title, updated_accounts):
 请及时查看最新内容。
 """
         message.attach(MIMEText(body, "plain"))
+
+        # 使用默认的 SMTP 设置
+        # 假设使用 Gmail，可以直接使用 smtp.gmail.com
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 587
 
         # 发送邮件
         with smtplib.SMTP(smtp_server, smtp_port) as server:
