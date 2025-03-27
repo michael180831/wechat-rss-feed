@@ -1,63 +1,82 @@
-import feedparser
-import json
-import os
 import requests
 from datetime import datetime, timezone
-from time import mktime
+import os
+import base64
+import json
+from send_email import send_notification_email
+from process_biz import process_biz_file
 
-def get_valid_biz_list():
-    """获取所有可能的有效 biz 组合"""
+def load_accounts():
+    """加载需要监控的公众号列表"""
     try:
-        with open('processed_biz.json', 'r', encoding='utf-8') as f:
-            biz_data = json.load(f)
-        all_variants = set()
-        for variants in biz_data.values():
-            all_variants.update(variants)
-        return list(all_variants)
-    except FileNotFoundError:
-        print("processed_biz.json not found")
-        return []
+        # 首先处理biz.txt生成processed_biz.json
+        processed_biz = process_biz_file()
+        if not processed_biz:
+            print("No valid biz entries found")
+            return []
+        
+        # 获取所有可能的biz变体
+        all_variants = []
+        for variants in processed_biz.values():
+            all_variants.extend(variants)
+        
+        return list(set(all_variants))  # 去重
     except Exception as e:
-        print(f"Error reading processed_biz.json: {str(e)}")
+        print(f"Error loading accounts: {e}")
         return []
 
-def load_last_update():
-    """加载上次更新的时间"""
-    try:
-        with open('last_update.json', 'r') as f:
-            data = json.load(f)
-            return datetime.fromisoformat(data['last_update'])
-    except FileNotFoundError:
-        initial_time = datetime.now(timezone.utc)
-        save_last_update(initial_time)
-        return initial_time
+def get_original_biz(variant, processed_biz):
+    """根据变体找到原始的biz值"""
+    for original, variants in processed_biz.items():
+        if variant in variants:
+            return original
+    return variant
 
-def save_last_update(update_time):
-    """保存本次更新时间"""
-    with open('last_update.json', 'w') as f:
-        json.dump({'last_update': update_time.isoformat()}, f)
-
-def create_update_issue(latest_entry):
-    """创建更新通知的 Issue"""
+def check_update(biz):
+    """检查单个公众号是否有更新"""
     try:
-        url = "https://api.github.com/repos/michael180831/wechat-rss-feed/issues"
+        url = "https://mp.weixin.qq.com/mp/profile_ext"
+        params = {
+            "__biz": base64.b64decode(biz).decode('utf-8'),
+            "action": "home",
+            "scene": "124"
+        }
         
-        title = f"RSS更新: {latest_entry.get('title', '新文章')}"
-        content = latest_entry.get('description', '')
+        response = requests.get(url, params=params)
+        return response.status_code == 200
+    except Exception as e:
+        print(f"Error checking account {biz}: {e}")
+        return False
+
+def create_notification(updated_accounts, processed_biz):
+    """创建更新通知"""
+    try:
+        current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+        title = f"检测到公众号更新 - {current_time}"
         
+        # 将变体biz转换为原始biz
+        original_updated_accounts = [
+            get_original_biz(account, processed_biz)
+            for account in updated_accounts
+        ]
+        original_updated_accounts = list(set(original_updated_accounts))  # 去重
+        
+        # 创建通知内容
         body = f"""
-# 新文章更新
+# 公众号更新提醒
 
-## 文章信息
-- 标题: {latest_entry.get('title', '')}
-- 链接: {latest_entry.get('link', '')}
-- 发布时间: {latest_entry.get('published', '')}
-- 作者: {latest_entry.get('author', '')}
+## 检测时间
+{current_time}
 
-## 原文内容
-{content}
+## 更新公众号
+{chr(10).join([f'- {account}' for account in original_updated_accounts])}
+
+## 提示
+请访问对应公众号查看最新内容
 """
         
+        # 创建GitHub Issue
+        url = "https://api.github.com/repos/michael180831/wechat-rss-feed/issues"
         headers = {
             "Authorization": f"token {os.environ.get('GITHUB_TOKEN')}",
             "Accept": "application/vnd.github.v3+json"
@@ -65,60 +84,50 @@ def create_update_issue(latest_entry):
         data = {
             "title": title,
             "body": body,
-            "labels": ["rss-update", "pending-summary"]  # 添加标签以标识需要处理
+            "labels": ["update-detected"]
         }
         
         response = requests.post(url, json=data, headers=headers)
         if response.status_code == 201:
-            print("Successfully created issue for update")
-            return True
-        else:
-            print(f"Failed to create issue. Status code: {response.status_code}")
-            return False
+            # 发送邮件通知
+            return send_notification_email(title, original_updated_accounts)
+        return False
             
     except Exception as e:
-        print(f"Error creating issue: {str(e)}")
+        print(f"Error creating notification: {e}")
         return False
 
-def check_updates():
-    """检查RSS是否有更新"""
-    feed_url = "https://michael180831.github.io/wechat-rss-feed/rss.xml"
-    
+def main():
+    """主程序"""
     try:
-        valid_biz_list = get_valid_biz_list()
-        print(f"Loaded {len(valid_biz_list)} valid biz variants")
-        
-        feed = feedparser.parse(feed_url)
-        
-        if len(feed.entries) == 0:
-            print("No entries found in the feed")
+        # 获取处理后的biz数据
+        processed_biz = process_biz_file()
+        if not processed_biz:
+            print("No accounts found to monitor")
             return False
-        
-        last_update = load_last_update()
-        latest_entry = feed.entries[0]
-        
-        if hasattr(latest_entry, 'published_parsed'):
-            latest_time = datetime.fromtimestamp(
-                mktime(latest_entry.published_parsed),
-                tz=timezone.utc
-            )
+
+        # 检查所有biz变体
+        updated_accounts = []
+        for original_biz, variants in processed_biz.items():
+            for variant in variants:
+                if check_update(variant):
+                    updated_accounts.append(variant)
+                    # 如果找到一个有效的变体，就跳过该biz的其他变体
+                    break
             
-            if latest_time > last_update:
-                issue_created = create_update_issue(latest_entry)
-                if issue_created:
-                    save_last_update(latest_time)
-                return issue_created
-                
+        if updated_accounts:
+            return create_notification(updated_accounts, processed_biz)
+        
+        print("No updates found")
         return False
         
     except Exception as e:
-        print(f"Error checking updates: {str(e)}")
+        print(f"Error in main process: {e}")
         return False
 
 if __name__ == "__main__":
-    has_updates = check_updates()
-    # 使用新的GitHub Actions输出语法
+    has_updates = main()
+    # 输出结果供GitHub Actions使用
     with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
         print(f"has_updates={str(has_updates).lower()}", file=fh)
-    
     print(f"Update check completed. Has updates: {has_updates}")
