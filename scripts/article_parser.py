@@ -16,6 +16,18 @@ def parse_datetime(date_str):
         return tz.localize(datetime(year, month, day, hour, minute))
     return None
 
+def is_newer_article(current_time_str, stored_time_str):
+    """比较文章时间，判断是否更新"""
+    if not stored_time_str:
+        return True
+    
+    try:
+        current = datetime.strptime(current_time_str, '%Y-%m-%d %H:%M:%S')
+        stored = datetime.strptime(stored_time_str, '%Y-%m-%d %H:%M:%S')
+        return current > stored
+    except Exception:
+        return False
+
 def extract_article_info(html_content):
     """从文章HTML中提取信息"""
     try:
