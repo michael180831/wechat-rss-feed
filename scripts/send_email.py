@@ -1,52 +1,42 @@
-import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import os
+from datetime import datetime
 
-class EmailConfig:
-    def __init__(self):
-        self.sender = os.environ.get('EMAIL_SENDER')
-        self.password = os.environ.get('EMAIL_PASSWORD')
-        self.recipient = os.environ.get('EMAIL_RECIPIENT')
+def send_notification_email(title, updated_accounts):
+    """发送邮件通知"""
+    try:
+        # 获取邮件配置
+        sender_email = os.environ.get('EMAIL_ADDRESS')
+        receiver_email = os.environ.get('EMAIL_ADDRESS')
+        password = os.environ.get('EMAIL_PASSWORD')
+        smtp_server = os.environ.get('SMTP_SERVER')
+        smtp_port = int(os.environ.get('SMTP_PORT'))
 
-        # 根据发件人邮箱判断使用的服务器
-        if '@qq.com' in self.sender:
-            self.smtp_server = 'smtp.qq.com'
-            self.smtp_port = 465
-            self.use_ssl = True
-        elif '@163.com' in self.sender:
-            self.smtp_server = 'smtp.163.com'
-            self.smtp_port = 465
-            self.use_ssl = True
-        elif '@gmail.com' in self.sender:
-            self.smtp_server = 'smtp.gmail.com'
-            self.smtp_port = 587
-            self.use_ssl = False
-        else:
-            raise ValueError(f"Unsupported email provider for {self.sender}")
+        # 创建邮件
+        message = MIMEMultipart()
+        message["From"] = sender_email
+        message["To"] = receiver_email
+        message["Subject"] = title
 
-    def send_email(self, subject, content):
-        try:
-            msg = MIMEMultipart()
-            msg['From'] = self.sender
-            msg['To'] = self.recipient
-            msg['Subject'] = subject
+        # 邮件内容
+        body = f"""
+检测到以下公众号有更新：
 
-            msg.attach(MIMEText(content, 'plain', 'utf-8'))
+{chr(10).join([f'- {account}' for account in updated_accounts])}
 
-            if self.use_ssl:
-                server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port)
-            else:
-                server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-                server.starttls()
+请及时查看最新内容。
+"""
+        message.attach(MIMEText(body, "plain"))
 
-            server.login(self.sender, self.password)
-            server.send_message(msg)
-            server.quit()
-
-            print("Email sent successfully!")
-            return True
-
-        except Exception as e:
-            print(f"Error sending email: {str(e)}")
-            return False
+        # 发送邮件
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(sender_email, password)
+            server.send_message(message)
+            
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
