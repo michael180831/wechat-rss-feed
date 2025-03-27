@@ -22,3 +22,4 @@ venv/
 # System files
 .DS_Store           # Mac系统文件
 Thumbs.db           # Windows系统文件
+processed_biz.json 
