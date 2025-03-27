@@ -7,10 +7,15 @@ from datetime import datetime
 def send_notification_email(title, updated_accounts):
     """发送邮件通知"""
     try:
-        # 只需要邮箱和密码配置
-        sender_email = os.environ.get('EMAIL_ADDRESS')
-        receiver_email = os.environ.get('EMAIL_ADDRESS')  # 接收邮件地址与发送地址相同
+        # 使用现有的环境变量名称
+        sender_email = os.environ.get('EMAIL_SENDER')
+        receiver_email = os.environ.get('EMAIL_RECIPIENT')
         password = os.environ.get('EMAIL_PASSWORD')
+
+        # 验证必要的环境变量
+        if not all([sender_email, receiver_email, password]):
+            print("Missing required email configuration")
+            return False
 
         message = MIMEMultipart()
         message["From"] = sender_email
@@ -27,9 +32,8 @@ def send_notification_email(title, updated_accounts):
 """
         message.attach(MIMEText(body, "plain"))
 
-        # 使用默认的 SMTP 设置
-        # 假设使用 Gmail，可以直接使用 smtp.gmail.com
-        smtp_server = "smtp.gmail.com"
+        # QQ邮箱的SMTP设置（如果使用的是QQ邮箱）
+        smtp_server = "smtp.qq.com"
         smtp_port = 587
 
         # 发送邮件
