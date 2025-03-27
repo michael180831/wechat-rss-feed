@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Generated files
+processed_biz.json   # process_biz.py 生成的临时文件
+
+# Environment
+.env
+.venv
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# System files
+.DS_Store           # Mac系统文件
+Thumbs.db           # Windows系统文件
