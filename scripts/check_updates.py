@@ -95,13 +95,19 @@ def format_update_message(account_info, original_biz, variants=None):
     update_msg.append("-------------------")
     return "\n".join(update_msg)
 
+# 修改 main 函数中的加载逻辑：
 def main():
     try:
-        # 加载处理过的公众号 biz 数据
         with open('processed_biz.json', 'r', encoding='utf-8') as f:
             processed_biz_data = json.load(f)
-            if not isinstance(processed_biz_data, dict):  # 添加类型检查
-                raise ValueError("processed_biz.json 必须为字典格式")
+            # 添加类型检查和空字典处理
+            if not isinstance(processed_biz_data, dict):
+                raise ValueError(
+                    "processed_biz.json 必须为字典格式，请重新运行 process_biz.py 生成"
+                )
+            if not processed_biz_data:
+                raise ValueError("processed_biz.json 内容为空，请检查 biz.txt 输入")
+        # ... （原有代码）
         
         accounts = load_account_info()
         current_time = get_beijing_time()
