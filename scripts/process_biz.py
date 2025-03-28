@@ -35,44 +35,53 @@ def validate_and_fix_biz(biz):
     
     return list(variants)
 
+# 修改 process_biz_file 函数中的路径逻辑：
 def process_biz_file():
     try:
-        # ... （原有代码）
-
-        # 确保 processed_biz 是字典且初始化正确
-        processed_biz = {}  # 确保初始化为空字典
-
-        for biz in biz_list:
-            # 添加空值检查和清理
-            if not biz.strip():
-                continue  # 跳过空行
-                
-            # 添加调试日志
-            print(f"Processing biz: {biz}")
-            variants = validate_and_fix_biz(biz)
-            # 确保 variants 是列表且不为空
-            if not isinstance(variants, list):
-                variants = [biz]  # 默认包含原始值
-            
-            processed_biz[biz] = variants
-            print(f"Generated {len(variants)} variants for {biz}")
-
-        # 保存前验证数据结构
-        if not isinstance(processed_biz, dict):
-            raise TypeError("processed_biz 必须是字典")
+        # 原代码：root_dir = os.path.dirname(script_dir)
+        # 改为直接使用当前工作目录（适配 GitHub Actions）
+        biz_file_path = os.path.join(os.getcwd(), 'biz.txt')  # 直接定位当前目录下的 biz.txt
+        output_file_path = os.path.join(os.getcwd(), 'processed_biz.json')
         
-        # 修改保存路径为绝对路径
-        output_file_path = os.path.join(root_dir, 'processed_biz.json')  # 第 47 行
+        print(f"当前工作目录: {os.getcwd()}")
+        print(f"尝试读取文件: {biz_file_path}")
+        
+        with open(biz_file_path, 'r', encoding='utf-8') as f:
+            # 添加严格过滤逻辑
+            biz_list = [line.strip() for line in f if line.strip()]
+            if not biz_list:
+                raise ValueError("biz.txt 文件内容为空")
+                
+        print(f"成功读取 {len(biz_list)} 条 biz 记录")
+        processed_biz = {}
+        for biz in biz_list:
+            # 过滤无效字符（如不可见字符）
+            biz = biz.strip().replace('\ufeff', '')  # 处理 BOM 字符
+            if not biz:
+                continue
+                
+            # 生成变体并确保类型安全
+            variants = validate_and_fix_biz(biz)
+            if not isinstance(variants, list):
+                variants = [biz]  # 强制转为列表
+                
+            processed_biz[biz] = variants
+        
+        # 若处理结果为空，写入空字典而非列表
+        if not processed_biz:
+            processed_biz = {"default": ["MzI5MjAxNjM4MA=="]}  # 示例占位数据
+        
+        # 保存文件前打印最终数据结构
+        print(f"生成的 processed_biz 类型: {type(processed_biz)}")
+        print(f"示例数据: {list(processed_biz.items())[:1]}")
+        
         with open(output_file_path, 'w', encoding='utf-8') as f:
             json.dump(processed_biz, f, ensure_ascii=False, indent=2)
         
         return processed_biz
-            
-    except FileNotFoundError:
-        print(f"Error: biz.txt not found at {biz_file_path}")
-        return {}
     except Exception as e:
-        print(f"Error processing biz file: {str(e)}")
+        print(f"严重错误: {str(e)}")
+        # 返回空字典而非其他类型
         return {}
 
 if __name__ == "__main__":
