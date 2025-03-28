@@ -100,6 +100,8 @@ def main():
         # 加载处理过的公众号 biz 数据
         with open('processed_biz.json', 'r', encoding='utf-8') as f:
             processed_biz_data = json.load(f)
+            if not isinstance(processed_biz_data, dict):  # 添加类型检查
+                raise ValueError("processed_biz.json 必须为字典格式")
         
         accounts = load_account_info()
         current_time = get_beijing_time()
