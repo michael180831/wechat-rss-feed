@@ -22,8 +22,8 @@ def save_account_info(accounts):
 def get_beijing_time():
     """获取北京时间"""
     beijing_tz = pytz.timezone('Asia/Shanghai')
-    utc_time = datetime.utcnow()
-    beijing_time = utc_time.replace(tzinfo=pytz.utc).astimezone(beijing_tz)
+    utc_time = datetime.now(pytz.utc)
+    beijing_time = utc_time.astimezone(beijing_tz)
     return beijing_time
 
 def get_account_name(biz, accounts, processed_biz_data):
@@ -97,6 +97,7 @@ def format_update_message(account_info, original_biz, variants=None):
 
 def main():
     try:
+        # 加载处理过的公众号 biz 数据
         with open('processed_biz.json', 'r', encoding='utf-8') as f:
             processed_biz_data = json.load(f)
         
@@ -109,20 +110,27 @@ def main():
         update_messages = []
         
         # 检查所有公众号
-        checked_accounts = set()
         for original_biz, variants in processed_biz_data.items():
-            if original_biz not in checked_accounts:
-                account_info = accounts[original_biz]
+            # 尝试找到匹配的账号
+            matched_biz = original_biz
+            if original_biz not in accounts:
+                for variant in variants:
+                    if variant in accounts:
+                        matched_biz = variant
+                        break
+            
+            # 如果找到匹配的账号
+            if matched_biz in accounts:
+                account_info = accounts[matched_biz]
                 
                 # 检查是否有新文章
                 article_url = account_info.get('latest_article', {}).get('url')
                 if article_url and update_article_info(account_info, article_url):
                     updated_accounts.append(account_info['name'])
                 
-                # 格式化消息
+                # 格式化消息，包括变体信息
                 update_msg = format_update_message(account_info, original_biz, variants)
                 update_messages.append(update_msg)
-                checked_accounts.add(original_biz)
         
         # 保存更新后的账号信息
         save_account_info(accounts)
