@@ -56,9 +56,10 @@ def process_biz_file():
         # 处理每个 biz
         processed_biz = {}
         for biz in biz_list:
-            variants = validate_and_fix_biz(biz)
-            processed_biz[biz] = variants
-            print(f"Processed biz: {biz} -> {len(variants)} variants")
+            # 直接将 validate_and_fix_biz 的返回值赋给 processed_biz[biz]
+            processed_biz[biz] = validate_and_fix_biz(biz)
+            # 打印变体数量时，使用 processed_biz[biz]
+            print(f"Processed biz: {biz} -> {len(processed_biz[biz])} variants")
         
         # 保存处理结果
         with open(output_file_path, 'w', encoding='utf-8') as f:
