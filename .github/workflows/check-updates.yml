@@ -21,16 +21,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      # 在 jobs.check-updates.steps 中添加：
+      - name: List workspace files
+        run: ls -la  # 查看目录结构，确认 biz.txt 存在
       - name: Generate processed_biz.json
-        run: python scripts/process_biz.py  # 假设 process_biz.py 在 scripts 目录下
+        run: |
+          python process_biz.py
+          cat processed_biz.json  # 打印生成内容
       
       - name: Verify JSON format
         run: |
           if ! python -c "import json; f=open('processed_biz.json'); data=json.load(f); assert isinstance(data, dict), '格式错误'"; then
-            echo "processed_biz.json 格式验证失败"
+            echo "=== 文件内容 ==="
+            cat processed_biz.json
             exit 1
-          fi    
+          fi  
       - name: Display current time
         run: |
           echo "Current time: $(date -u '+%Y-%m-%d %H:%M:%S')"
