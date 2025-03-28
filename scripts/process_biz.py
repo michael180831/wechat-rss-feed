@@ -54,18 +54,18 @@ def process_biz_file():
         print(f"Found {len(biz_list)} biz entries")
         
         # 处理每个 biz
-        processed_biz = {}
+        # 确保 processed_biz 是字典结构
+        processed_biz = {}  # 显式声明为字典 [^2][^3]
         for biz in biz_list:
-            # 直接将 validate_and_fix_biz 的返回值赋给 processed_biz[biz]
-            processed_biz[biz] = validate_and_fix_biz(biz)
-            # 打印变体数量时，使用 processed_biz[biz]
-            print(f"Processed biz: {biz} -> {len(processed_biz[biz])} variants")
+            # 获取变量或显式赋值均可，不影响功能（推荐显式赋值便于调试）
+            variants = validate_and_fix_biz(biz)  # 返回列表 [^1][^5]
+            processed_biz[biz] = variants         # 确保存储格式为字典 {biz: list}
+            print(f"Processed biz: {biz} -> {len(variants)} variants")
         
-        # 保存处理结果
-        with open(output_file_path, 'w', encoding='utf-8') as f:
+        # 确保以字典格式保存 [^3]
+        with open('processed_biz.json', 'w', encoding='utf-8') as f:
             json.dump(processed_biz, f, ensure_ascii=False, indent=2)
         
-        print(f"Successfully saved processed biz to: {output_file_path}")
         return processed_biz
             
     except FileNotFoundError:
