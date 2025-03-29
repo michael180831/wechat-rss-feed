@@ -24,9 +24,7 @@ jobs:
       - name: List workspace files
         run: ls -la  # 查看目录结构，确认 biz.txt 存在
       - name: Generate processed_biz.json
-        run: |
-          python process_biz.py
-          cat processed_biz.json  # 打印生成内容
+        run: python scripts/process_biz.py  # 正确路径
       
       - name: Verify JSON format
         run: |
