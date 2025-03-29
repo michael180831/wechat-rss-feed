@@ -39,28 +39,31 @@ def get_account_name(biz, accounts, processed_biz_data):
     
     return f"未知公众号({biz})"
 
+# 修改 update_article_info 函数
 def update_article_info(account_info, article_url):
-    """更新文章信息"""
     try:
         response = requests.get(article_url)
         if response.status_code == 200:
             article_info = extract_article_info(response.text)
             if article_info:
-                # 检查是否为更新的文章
                 current_publish_time = article_info.get('publish_time')
                 stored_publish_time = account_info.get('latest_article', {}).get('publish_time')
                 
+                print(f"[DEBUG] 公众号 {account_info['name']} 当前发布时间: {current_publish_time}，存储时间: {stored_publish_time}")
+                
                 if current_publish_time and is_newer_article(current_publish_time, stored_publish_time):
+                    print(f"[更新] 检测到 {account_info['name']} 有新文章")
                     account_info['latest_article'] = {
                         'title': article_info['title'],
                         'publish_time': current_publish_time,
                         'url': article_url,
                         'detected_at': get_beijing_time().strftime('%Y-%m-%d %H:%M:%S')
                     }
-                    return True
+                    return True  # 明确返回 True
+        return False  # 其他情况返回 False
     except Exception as e:
-        print(f"更新文章信息时出错: {str(e)}")
-    return False
+        print(f"[ERROR] 更新失败: {str(e)}")
+        return False
 
 def format_update_message(account_info):
     """仅包含公众号名称和发布时间"""
