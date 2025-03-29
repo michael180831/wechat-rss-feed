@@ -62,38 +62,20 @@ def update_article_info(account_info, article_url):
         print(f"更新文章信息时出错: {str(e)}")
     return False
 
-def format_update_message(account_info, original_biz, variants=None):
-    """格式化更新消息"""
+def format_update_message(account_info):
+    """仅包含公众号名称和发布时间"""
     account_name = account_info["name"]
-    update_msg = [
-        f"公众号：{account_name}",
-        f"识别码：{original_biz}"
-    ]
+    latest_article = account_info.get("latest_article", {})
     
-    # 添加最新文章信息
-    latest_article = account_info.get('latest_article', {})
-    if latest_article and latest_article.get('publish_time'):
-        update_msg.extend([
-            f"最新文章：{latest_article.get('title', '无标题')}",
-            f"发布时间：{latest_article.get('publish_time', '未知')}",
-            f"检测时间：{latest_article.get('detected_at', '未知')}",
-            f"文章链接：{latest_article.get('url', '未知')}"
-        ])
-    else:
-        update_msg.append("暂无文章信息")
+    publish_time = latest_article.get("publish_time", "null")
+    detected_at = latest_article.get("detected_at", "null")
     
-    # 添加变体信息
-    if variants:
-        variant_info = []
-        for i, variant in enumerate(variants, 1):
-            variant_name = f"{account_name}{i}"
-            variant_info.append(f"变体{i}：{variant} ({variant_name})")
-        if variant_info:
-            update_msg.append("\n变体信息：")
-            update_msg.extend(variant_info)
-    
-    update_msg.append("-------------------")
-    return "\n".join(update_msg)
+    return (
+        f"公众号名称：{account_name}\n"
+        f"文章发布时间：{publish_time}\n"
+        f"检测时间：{detected_at}\n"
+        "-------------------"
+    )
 
 # 修改 main 函数中的加载逻辑：
 def main():
@@ -119,7 +101,6 @@ def main():
         
         # 检查所有公众号
         for original_biz, variants in processed_biz_data.items():
-            # 尝试找到匹配的账号
             matched_biz = original_biz
             if original_biz not in accounts:
                 for variant in variants:
@@ -127,40 +108,28 @@ def main():
                         matched_biz = variant
                         break
             
-            # 如果找到匹配的账号
             if matched_biz in accounts:
                 account_info = accounts[matched_biz]
-                
-                # 检查是否有新文章
                 article_url = account_info.get('latest_article', {}).get('url')
+                
+                # 关键修改：仅在更新时记录
                 if article_url and update_article_info(account_info, article_url):
                     updated_accounts.append(account_info['name'])
-                
-                # 格式化消息，包括变体信息
-                update_msg = format_update_message(account_info, original_biz, variants)
-                update_messages.append(update_msg)
+                    update_msg = format_update_message(account_info)
+                    update_messages.append(update_msg)
         
-        # 保存更新后的账号信息
         save_account_info(accounts)
         
-        # 发送通知邮件
+        # 关键修改：仅在有更新时发送邮件
         if update_messages:
-            email_subject = f"微信公众号检查报告 - {check_time}"
-            if updated_accounts:
-                email_subject = f"[有更新] {email_subject}"
-                
+            email_subject = f"微信公众号更新通知 - {check_time}"
             email_body = (
-                f"检查时间：{check_time}\n"
-                f"{'发现更新的公众号：' + '、'.join(updated_accounts) if updated_accounts else '本次检查未发现更新'}\n\n"
-                "公众号详细信息：\n\n" +
+                f"检测时间：{check_time}\n"
+                f"更新公众号数量：{len(updated_accounts)}\n"
+                "-------------------\n" +
                 "\n\n".join(update_messages)
             )
-            
-            send_email(
-                subject=email_subject,
-                body=email_body,
-                is_error=False
-            )
+            send_email(subject=email_subject, body=email_body, is_error=False)
         
         return True
         
