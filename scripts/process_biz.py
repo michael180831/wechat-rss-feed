@@ -38,13 +38,19 @@ def validate_and_fix_biz(biz):
 # 修改 process_biz_file 函数中的路径逻辑：
 def process_biz_file():
     try:
-        # 原代码：root_dir = os.path.dirname(script_dir)
-        # 改为直接使用当前工作目录（适配 GitHub Actions）
-        biz_file_path = os.path.join(os.getcwd(), 'biz.txt')  # 直接定位当前目录下的 biz.txt
-        output_file_path = os.path.join(os.getcwd(), 'processed_biz.json')
+        # 获取脚本所在目录的父目录（即项目根目录）
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.dirname(script_dir)  # 关键修改：上溯一级到项目根目录
         
-        print(f"当前工作目录: {os.getcwd()}")
-        print(f"尝试读取文件: {biz_file_path}")
+        biz_file_path = os.path.join(root_dir, 'biz.txt')  # 正确路径：根目录下的 biz.txt
+        output_file_path = os.path.join(root_dir, 'processed_biz.json')
+        
+        print(f"根目录: {root_dir}")
+        print(f"biz.txt 路径: {biz_file_path}")
+        
+        # 验证文件存在性
+        if not os.path.exists(biz_file_path):
+            raise FileNotFoundError(f"biz.txt 不存在于 {biz_file_path}")
         
         with open(biz_file_path, 'r', encoding='utf-8') as f:
             # 添加严格过滤逻辑
